@@ -1,0 +1,25 @@
+{
+  "name": "@pixels/game-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --conditions=source src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@colyseus/core": "^0.18.0",
+    "@colyseus/schema": "^5.0.0",
+    "@colyseus/ws-transport": "^0.18.4",
+    "@pixels/shared": "workspace:*",
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "@colyseus/sdk": "^0.18.9",
+    "@types/express": "^5.0.6",
+    "tsx": "^4.23.15"
+  }
+}

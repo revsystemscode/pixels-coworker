@@ -1,0 +1,40 @@
+# Servicios locales de desarrollo. NO usar esta configuración en producción.
+name: pixels-coworker
+
+services:
+  postgres:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pixels}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pixels}
+      POSTGRES_DB: ${POSTGRES_DB:-pixels}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:8.6.8-alpine
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # Modo --dev: claves fijas (devkey / secret) y una sola UDP. Solo para local.
+  livekit:
+    image: livekit/livekit-server:v1.13.10
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+    ports:
+      - '7880:7880' # API + señalización WebSocket
+      - '7881:7881' # WebRTC por TCP
+      - '7882:7882/udp' # WebRTC por UDP
