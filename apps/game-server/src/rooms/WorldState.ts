@@ -1,11 +1,16 @@
 import { schema, t, type SchemaType } from '@colyseus/schema';
+import type { Direction } from '@pixels/shared';
 
-// Estado mínimo de la Fase 0. En la Fase 1 se añaden dirección, avatar y movimiento.
 export const Player = schema(
   {
     name: t.string(),
-    x: t.number(),
-    y: t.number(),
+    avatar: t.uint8(),
+    /** Posición en tiles. */
+    x: t.int16(),
+    y: t.int16(),
+    dir: t.string<Direction>().default('down'),
+    /** Último paso procesado (aceptado o no). El cliente lo usa para reconciliar su predicción. */
+    seq: t.uint32(),
   },
   'Player',
 );

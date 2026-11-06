@@ -1,13 +1,15 @@
-import { Server, matchMaker } from '@colyseus/core';
+import { Server, matchMaker, type Room } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { WORLD_ROOM, type GameServerHealth } from '@pixels/shared';
 import { WorldRoom } from './rooms/WorldRoom.js';
 
 export interface GameServerOptions {
   corsOrigin: string;
+  /** Clase de sala a usar (las pruebas pasan una subclase con otro mapa). */
+  roomClass?: new () => Room;
 }
 
-export function createGameServer({ corsOrigin }: GameServerOptions) {
+export function createGameServer({ corsOrigin, roomClass = WorldRoom }: GameServerOptions) {
   const server = new Server({
     transport: new WebSocketTransport(),
     express: (app) => {
@@ -24,6 +26,6 @@ export function createGameServer({ corsOrigin }: GameServerOptions) {
     },
   });
 
-  server.define(WORLD_ROOM, WorldRoom);
+  server.define(WORLD_ROOM, roomClass);
   return server;
 }
