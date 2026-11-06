@@ -2,7 +2,7 @@
 
 Plataforma web de reuniones en un mundo 2D (vista cenital, pixel art) con video y audio por proximidad.
 
-Estado: **Fase 0 · Definición** (entorno de desarrollo).
+Estado: **Fase 1 · Mundo multijugador** (sin video todavía). Ver [`docs/decisiones.md`](./docs/decisiones.md).
 
 ## Requisitos
 
@@ -32,25 +32,69 @@ en paralelo:
 
 Sin Docker puedes arrancar solo las apps con `pnpm dev:apps` (los servicios aparecerán como `down`).
 
-## Cómo probar la Fase 0
+## Cómo probar
+
+### Fase 1 · Mundo multijugador
+
+1. `pnpm dev` y abre http://localhost:5173 en **dos navegadores** (o una ventana normal y otra privada).
+2. En cada uno, escribe un nombre, elige avatar y pulsa **Entrar**.
+3. Muévete con flechas o WASD, o haz clic en una casilla del mapa: cada navegador ve al otro caminar.
+4. Escribe en el chat (Enter abre el chat, Escape vuelve al juego): el mensaje aparece en ambos.
+5. En desarrollo, arriba al centro se ven los FPS.
+
+Pruebas automáticas:
+
+```bash
+pnpm test                                   # unitarias e integración (Vitest)
+pnpm --filter @pixels/web e2e               # E2E con Playwright (2 navegadores, chat, clic)
+```
+
+Prueba de carga (50 bots paseando por la oficina):
+
+```bash
+# El servidor admite 25 jugadores por sala; para la prueba, súbelo:
+ROOM_MAX_CLIENTS=60 pnpm --filter @pixels/game-server dev
+pnpm --filter @pixels/game-server bots -- 50      # Ctrl+C para parar
+```
+
+Abre la web y mira el contador de FPS (objetivo: 30 o más). Medido en un MacBook Pro 2019 con GPU
+integrada (Intel UHD 630): 60 FPS estables con 50 bots.
+
+### Fase 0 · Entorno
 
 1. `pnpm dev`
-2. Abre http://localhost:5173: el panel **Servicios** debe mostrar los 5 servicios en verde (`up`) y
-   debajo una cuadrícula dibujada por Phaser.
-3. `docker compose ps` debe mostrar `postgres`, `redis` y `livekit` en marcha.
-4. `pnpm test` ejecuta las pruebas unitarias de todos los paquetes.
+2. En la pantalla de entrada, el panel **Servicios (desarrollo)** muestra los 5 servicios en verde.
+3. `docker compose ps` muestra `postgres`, `redis` y `livekit` en marcha.
 
 ## Estructura
 
 ```
 apps/
-  web/            React 18 + Vite + Phaser 3
-  game-server/    Colyseus: sala "world" (autoridad del juego)
+  web/            React 18 + Vite + Phaser 3 (src/game: escena, avatares, predicción)
+    public/assets/  tilesets y personajes (Kenney, CC0)
+    e2e/            pruebas E2E con Playwright
+  game-server/    Colyseus: sala "world", autoridad del movimiento y el chat
+    scripts/bots.ts bots para pruebas de carga
   api/            Fastify: salud de servicios; tokens de LiveKit en la Fase 2
 packages/
-  shared/         tipos, constantes y utilidades compartidas
+  shared/         tipos, protocolo, mapa, colisiones y búsqueda de caminos (cliente y servidor)
+    src/maps/       mapas en formato Tiled JSON
+tools/            scripts para preparar assets y generar el mapa inicial
 docker-compose.yml   Postgres, Redis y LiveKit para desarrollo local
 ```
+
+## Mapas
+
+Los mapas viven en `packages/shared/src/maps/` en formato **Tiled JSON**; los usan el cliente (para
+dibujar) y el servidor (para validar colisiones). Se pueden abrir y editar con
+[Tiled](https://www.mapeditor.org/). Reglas:
+
+- Tiles de 16 px. Capas de tiles visibles: `floor`, `walls`, `decor-below`, `furniture`.
+- Capa de tiles `collision` (oculta): cualquier tile pintado bloquea el paso.
+- Capa de objetos `spawn` con un punto llamado `spawn`: donde aparecen los jugadores.
+
+`office.json` se generó con `node tools/build-office-map.mjs`. Si lo editas en Tiled, no vuelvas a
+ejecutar ese script (sobrescribiría tus cambios).
 
 `@pixels/shared` se consume desde el código fuente en desarrollo (condición de exportación `source`), así
 que no hace falta compilarlo para `pnpm dev`, `pnpm test` ni `pnpm typecheck`. `pnpm build` lo compila a
@@ -65,9 +109,12 @@ que no hace falta compilarlo para `pnpm dev`, `pnpm test` ni `pnpm typecheck`. `
 | `pnpm services:up` / `services:down` / `services:logs` | Gestiona los contenedores                               |
 | `pnpm lint` / `pnpm format`                            | ESLint / Prettier                                       |
 | `pnpm typecheck` / `pnpm test` / `pnpm build`          | Tipos, pruebas (Vitest) y build, vía Turborepo          |
+| `pnpm --filter @pixels/web e2e`                        | Pruebas E2E (Playwright)                                |
+| `pnpm --filter @pixels/game-server bots -- 50`         | 50 bots para pruebas de carga                           |
 
 Un hook de pre-commit (Husky + lint-staged) pasa ESLint y Prettier a los archivos modificados. La CI
-(GitHub Actions) ejecuta lint, formato, tipos, pruebas y build en cada push y pull request.
+(GitHub Actions) ejecuta lint, formato, tipos, pruebas, build y las pruebas E2E en cada push y pull
+request.
 
 ## Convenciones
 
