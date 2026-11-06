@@ -3,3 +3,4 @@ dist
 .turbo
 coverage
 pnpm-lock.yaml
+packages/shared/src/maps/*.json
