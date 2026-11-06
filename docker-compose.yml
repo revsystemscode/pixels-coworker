@@ -38,3 +38,7 @@ services:
       - '7880:7880' # API + señalización WebSocket
       - '7881:7881' # WebRTC por TCP
       - '7882:7882/udp' # WebRTC por UDP
+
+volumes:
+  postgres-data:
+  redis-data:
