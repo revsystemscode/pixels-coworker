@@ -15,7 +15,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/api/**', 'apps/game-server/**', 'packages/**', '*.js'],
+    files: ['apps/api/**', 'apps/game-server/**', 'packages/**', 'tools/**', '*.js'],
     languageOptions: { globals: globals.node },
   },
   {
