@@ -214,6 +214,12 @@ const tileLayer = (id, name, data, extra = {}) => ({
 });
 
 const spawn = { x: 19, y: 16 };
+
+// Zonas privadas (en tiles, incluyen la cara de la pared). Quien está dentro solo oye a los de su zona.
+const ZONES = [
+  { name: 'Sala de reuniones', x: 1, y: 1, width: 12, height: 7 },
+  { name: 'Sala de concentración', x: 25, y: 1, width: 14, height: 7 },
+];
 const map = {
   type: 'map',
   version: '1.10',
@@ -225,8 +231,8 @@ const map = {
   height: H,
   tilewidth: T,
   tileheight: T,
-  nextlayerid: 7,
-  nextobjectid: 2,
+  nextlayerid: 8,
+  nextobjectid: 2 + ZONES.length,
   layers: [
     tileLayer(1, 'floor', floor),
     tileLayer(2, 'walls', walls),
@@ -262,6 +268,27 @@ const map = {
           visible: true,
         },
       ],
+    },
+    {
+      id: 7,
+      name: 'zones',
+      type: 'objectgroup',
+      x: 0,
+      y: 0,
+      opacity: 0.4,
+      visible: false,
+      draworder: 'topdown',
+      objects: ZONES.map((z, i) => ({
+        id: 2 + i,
+        name: z.name,
+        type: 'private',
+        x: z.x * T,
+        y: z.y * T,
+        width: z.width * T,
+        height: z.height * T,
+        rotation: 0,
+        visible: true,
+      })),
     },
   ],
   tilesets: [

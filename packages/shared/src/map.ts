@@ -15,10 +15,23 @@ export type TiledLayer =
   | { type: 'objectgroup'; name: string; objects: TiledObject[] };
 
 export interface TiledObject {
+  id?: number;
   name: string;
   x: number;
   y: number;
+  width?: number;
+  height?: number;
   point?: boolean;
+}
+
+/** Zona privada (rectángulo en tiles). Quien está dentro solo oye y ve a los de su misma zona. */
+export interface Zone {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 /** Mapa ya procesado, listo para validar movimientos (en coordenadas de tile). */
@@ -29,15 +42,19 @@ export interface WorldMap {
   /** 1 = bloqueado, 0 = se puede pisar. Índice: y * width + x. */
   blocked: Uint8Array;
   spawn: Point;
+  zones: Zone[];
 }
 
 export const COLLISION_LAYER = 'collision';
 export const SPAWN_LAYER = 'spawn';
+export const ZONES_LAYER = 'zones';
 
 /**
  * Convierte un mapa de Tiled en un WorldMap.
  * - Capa de tiles "collision": cualquier tile distinto de 0 bloquea.
  * - Capa de objetos "spawn": un punto llamado "spawn" marca dónde aparecen los jugadores.
+ * - Capa de objetos "zones" (opcional): cada rectángulo es una zona privada. Su nombre se muestra
+ *   al entrar. Se redondea a tiles completos.
  */
 export function parseWorldMap(map: TiledMap): WorldMap {
   if (map.tilewidth !== map.tileheight) throw new Error('Los tiles deben ser cuadrados');
@@ -69,10 +86,41 @@ export function parseWorldMap(map: TiledMap): WorldMap {
     tileSize: map.tilewidth,
     blocked,
     spawn,
+    zones: parseZones(map),
   };
   if (!isWalkable(world, spawn.x, spawn.y))
     throw new Error('El punto "spawn" está sobre un tile bloqueado');
   return world;
+}
+
+function parseZones(map: TiledMap): Zone[] {
+  const layer = map.layers.find((l) => l.type === 'objectgroup' && l.name === ZONES_LAYER);
+  if (layer?.type !== 'objectgroup') return [];
+  const T = map.tilewidth;
+  return layer.objects.map((o, i) => {
+    if (o.point || !o.width || !o.height) {
+      throw new Error(`La zona "${o.name}" debe ser un rectángulo`);
+    }
+    const x = Math.round(o.x / T);
+    const y = Math.round(o.y / T);
+    return {
+      id: `zone-${o.id ?? i}`,
+      name: o.name || 'Zona privada',
+      x,
+      y,
+      width: Math.max(1, Math.round((o.x + o.width) / T) - x),
+      height: Math.max(1, Math.round((o.y + o.height) / T) - y),
+    };
+  });
+}
+
+/** Zona privada que contiene la casilla, o null si está en el espacio abierto. */
+export function zoneAt(map: WorldMap, p: Point): Zone | null {
+  return (
+    map.zones.find(
+      (z) => p.x >= z.x && p.x < z.x + z.width && p.y >= z.y && p.y < z.y + z.height,
+    ) ?? null
+  );
 }
 
 export function isWalkable(map: WorldMap, x: number, y: number): boolean {

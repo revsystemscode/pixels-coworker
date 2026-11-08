@@ -33,3 +33,8 @@ export const CHAT_RATE_WINDOW_MS = 5000;
 
 /** Mensajes de chat que guarda el servidor para quien entra tarde. */
 export const CHAT_HISTORY_SIZE = 50;
+
+/** Proximidad: se oye y se ve a quien está a HEARING_RADIUS tiles o menos (distancia euclídea). */
+export const HEARING_RADIUS = 3;
+/** Volumen al borde del radio. Hasta 1 tile de distancia el volumen es 1. */
+export const MIN_HEARING_VOLUME = 0.3;
