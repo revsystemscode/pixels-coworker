@@ -10,3 +10,6 @@ coverage/
 *.tsbuildinfo
 playwright-report/
 test-results/
+
+# Cliente de Prisma generado (pnpm install lo regenera)
+packages/db/src/generated/

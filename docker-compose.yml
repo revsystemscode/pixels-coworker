@@ -39,6 +39,18 @@ services:
       - '7881:7881' # WebRTC por TCP
       - '7882:7882/udp' # WebRTC por UDP
 
+  # Buzón de correo local: recibe los correos de login (enlaces mágicos). Web en http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    ports:
+      - '${MAILPIT_SMTP_PORT:-1025}:1025' # SMTP
+      - '${MAILPIT_WEB_PORT:-8025}:8025' # web y API
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
 volumes:
   postgres-data:
   redis-data:

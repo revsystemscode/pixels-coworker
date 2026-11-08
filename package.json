@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm services:up && turbo run dev",
+    "dev": "pnpm services:up && pnpm db:migrate && turbo run dev",
     "dev:apps": "turbo run dev",
     "services:up": "docker compose up -d --wait",
     "services:down": "docker compose down",
@@ -18,7 +18,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:migrate": "pnpm --filter @pixels/db migrate:deploy"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

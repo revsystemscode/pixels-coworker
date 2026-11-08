@@ -4,3 +4,5 @@ dist
 coverage
 pnpm-lock.yaml
 packages/shared/src/maps/*.json
+packages/db/src/generated
+packages/db/prisma/migrations

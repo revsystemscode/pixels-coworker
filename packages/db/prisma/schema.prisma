@@ -1,0 +1,171 @@
+// Esquema de la base de datos (PostgreSQL). Tras cambiarlo:
+//   pnpm --filter @pixels/db migrate:dev --name <cambio>
+// Las tablas user, session, account y verification son las que usa Better Auth (login).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Login (Better Auth) ---
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  /**
+   * Índice del avatar elegido (0..AVATAR_COUNT-1).
+   */
+  avatar        Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions       Session[]
+  accounts       Account[]
+  memberships    Membership[]
+  invitesCreated Invite[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// --- Espacios ---
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+/**
+ * Mapa en formato Tiled JSON. Cada espacio tiene su copia (para poder editarla en el futuro).
+ */
+model Map {
+  id        String   @id @default(cuid())
+  name      String
+  /**
+   * Plantilla de la que salió (por ejemplo, "office").
+   */
+  template  String?
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  spaces Space[]
+
+  @@map("maps")
+}
+
+model Space {
+  id        String   @id @default(cuid())
+  name      String
+  mapId     String
+  map       Map      @relation(fields: [mapId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  invites     Invite[]
+
+  @@index([mapId])
+  @@map("spaces")
+}
+
+/**
+ * Pertenencia de un usuario a un espacio, con su rol y su última posición en el mapa.
+ */
+model Membership {
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role
+  /**
+   * Última posición (en casillas). Null hasta la primera visita.
+   */
+  lastX     Int?
+  lastY     Int?
+  lastDir   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([spaceId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+/**
+ * Enlace de invitación. Solo se guarda el hash del token: el enlace se muestra una vez.
+ */
+model Invite {
+  id          String    @id @default(cuid())
+  spaceId     String
+  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  role        Role
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  uses        Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([spaceId])
+  @@index([createdById])
+  @@map("invites")
+}
