@@ -2,19 +2,13 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { TokenVerifier } from 'livekit-server-sdk';
 import type { MediaTokenResponse } from '@pixels/shared';
 import { signMediaTicket } from '@pixels/shared/media-ticket';
-import { buildApp } from './app.js';
-import { testMedia } from './test-config.js';
+import { createTestApp, testDb } from './test-config.js';
 
-const app = await buildApp({
-  corsOrigin: 'http://localhost:5173',
-  healthChecks: {
-    postgres: async () => 'up',
-    redis: async () => 'up',
-    livekit: async () => 'up',
-  },
-  media: testMedia,
+const { app } = await createTestApp();
+afterAll(async () => {
+  await app.close();
+  await testDb().$disconnect();
 });
-afterAll(() => app.close());
 
 const ticket = (overrides: Partial<{ sid: string; exp: number }> = {}, secret = 'ticket-secret') =>
   signMediaTicket(

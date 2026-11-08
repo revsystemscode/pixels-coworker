@@ -1,3 +1,4 @@
+export * from './api.js';
 export * from './constants.js';
 export * from './direction.js';
 export * from './health.js';
@@ -6,4 +7,5 @@ export * from './maps/index.js';
 export * from './pathfinding.js';
 export * from './protocol.js';
 export * from './proximity.js';
+export * from './roles.js';
 export * from './tiles.js';

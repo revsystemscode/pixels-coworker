@@ -1,18 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiHealth } from '@pixels/shared';
-import { buildApp } from './app.js';
-import { testMedia } from './test-config.js';
+import { createTestApp } from './test-config.js';
 
 describe('GET /health', () => {
   it('informa el estado de cada dependencia', async () => {
-    const app = await buildApp({
-      corsOrigin: 'http://localhost:5173',
+    const { app } = await createTestApp({
       healthChecks: {
         postgres: async () => 'up',
         redis: async () => 'down',
         livekit: async () => 'up',
       },
-      media: testMedia,
     });
 
     const res = await app.inject({ method: 'GET', url: '/health' });
@@ -27,14 +24,12 @@ describe('GET /health', () => {
   });
 
   it('permite CORS desde el frontend', async () => {
-    const app = await buildApp({
-      corsOrigin: 'http://localhost:5173',
+    const { app } = await createTestApp({
       healthChecks: {
         postgres: async () => 'up',
         redis: async () => 'up',
         livekit: async () => 'up',
       },
-      media: testMedia,
     });
 
     const res = await app.inject({
