@@ -36,6 +36,9 @@ const TILESETS = [
 ];
 const VISIBLE_LAYERS = ['floor', 'walls', 'decor-below', 'furniture'];
 
+/** Distancia (px del mundo) del centro del avatar a la parte de arriba de su nombre. */
+const HEAD_OFFSET = 18;
+
 type KeyMap = Record<Direction, Phaser.Input.Keyboard.Key[]>;
 
 export class WorldScene extends Phaser.Scene {
@@ -205,6 +208,24 @@ export class WorldScene extends Phaser.Scene {
   private typing() {
     const el = document.activeElement;
     return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+  }
+
+  /**
+   * Punto sobre la cabeza de cada avatar (encima del nombre), en píxeles CSS relativos al canvas.
+   * Sirve para colocar las burbujas de video.
+   */
+  headPositions(): Map<string, { x: number; y: number }> {
+    const result = new Map<string, { x: number; y: number }>();
+    // Antes de que la escena arranque no hay cámara.
+    const cam = this.cameras?.main;
+    if (!cam) return result;
+    for (const [id, a] of this.avatars) {
+      result.set(id, {
+        x: (a.sprite.x - cam.worldView.x) * cam.zoom,
+        y: (a.sprite.y - HEAD_OFFSET - cam.worldView.y) * cam.zoom,
+      });
+    }
+    return result;
   }
 
   /** Datos para pruebas E2E y depuración. */

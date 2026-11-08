@@ -442,3 +442,75 @@ video.mirror {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* --- Burbujas de video --- */
+
+.bubbles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  border: 2px solid var(--border);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+  transition: border-color 0.15s;
+  will-change: transform;
+}
+
+.bubble.speaking {
+  border-color: var(--up);
+}
+
+.bubble video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bubble-initial {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--panel-alt);
+}
+
+.bubble-name {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  max-width: calc(100% - 8px);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  border-radius: 4px;
+  background: rgb(18 22 31 / 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bubble-muted {
+  display: inline-flex;
+  color: var(--down);
+}
+
+.bubble-muted svg {
+  width: 12px;
+  height: 12px;
+}

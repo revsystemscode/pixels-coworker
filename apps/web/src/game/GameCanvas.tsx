@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import type { Room } from '@colyseus/sdk';
 import type { MediaSession } from '../media/MediaSession.js';
 import { useApp } from '../store.js';
+import { VideoBubbles } from '../ui/VideoBubbles.js';
 import { WorldScene } from './WorldScene.js';
 
 declare global {
@@ -17,9 +18,16 @@ declare global {
 }
 
 /** Monta Phaser dentro de React y lo destruye al desmontar. */
-export function GameCanvas({ room }: { room: Room }) {
+export function GameCanvas({ room, selfName }: { room: Room; selfName: string }) {
   const container = useRef<HTMLDivElement>(null);
+  const gameRef = useRef<Phaser.Game | null>(null);
   const [fps, setFps] = useState<number | null>(null);
+  const getPositions = useCallback(
+    () =>
+      gameRef.current?.scene.getScene<WorldScene>('world')?.headPositions() ??
+      new Map<string, { x: number; y: number }>(),
+    [],
+  );
 
   useEffect(() => {
     if (!container.current) return;
@@ -33,6 +41,7 @@ export function GameCanvas({ room }: { room: Room }) {
       scene: [],
     });
     game.scene.add('world', WorldScene, true, { room });
+    gameRef.current = game;
 
     const scene = () => game.scene.getScene<WorldScene>('world') ?? null;
     let fpsTimer: number | undefined;
@@ -48,6 +57,7 @@ export function GameCanvas({ room }: { room: Room }) {
     return () => {
       window.clearInterval(fpsTimer);
       delete window.__pixels;
+      gameRef.current = null;
       game.destroy(true);
     };
   }, [room]);
@@ -55,6 +65,7 @@ export function GameCanvas({ room }: { room: Room }) {
   return (
     <>
       <div ref={container} className="game-canvas" />
+      <VideoBubbles selfId={room.sessionId} selfName={selfName} getPositions={getPositions} />
       {fps !== null && <span className="fps">{fps} FPS</span>}
     </>
   );

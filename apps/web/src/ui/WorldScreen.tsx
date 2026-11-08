@@ -5,9 +5,10 @@ import { ChatPanel } from './ChatPanel.js';
 
 export function WorldScreen({ room }: { room: Room }) {
   const leave = useApp((s) => s.leave);
+  const selfName = useApp((s) => s.selfName);
   return (
     <div className="world">
-      <GameCanvas room={room} />
+      <GameCanvas room={room} selfName={selfName} />
       <header className="hud">
         <span className="hud-title">pixels-coworker</span>
         <button type="button" className="secondary" onClick={() => void leave()}>

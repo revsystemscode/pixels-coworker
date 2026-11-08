@@ -24,6 +24,7 @@ interface AppState {
   phase: Phase;
   error: string | null;
   room: Room | null;
+  selfName: string;
   media: MediaSession | null;
   messages: ChatEntry[];
   join: (options: JoinOptions) => Promise<void>;
@@ -35,11 +36,12 @@ export const useApp = create<AppState>((set, get) => ({
   phase: 'join',
   error: null,
   room: null,
+  selfName: '',
   media: null,
   messages: [],
 
   join: async (options) => {
-    set({ phase: 'connecting', error: null, messages: [] });
+    set({ phase: 'connecting', error: null, messages: [], selfName: options.name });
     try {
       const room = await new Client(env.gameServerWsUrl).joinOrCreate(WORLD_ROOM, options);
       // El servidor envía el ticket de medios nada más entrar.
