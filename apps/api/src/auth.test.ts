@@ -61,6 +61,25 @@ describe('login con enlace mágico', () => {
   });
 });
 
+describe('límite de intentos', () => {
+  it('con el límite activo (producción), frena las peticiones de enlace repetidas', async () => {
+    const { app } = await createTestApp({ rateLimit: true });
+    const codes: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/magic-link',
+        headers: json,
+        payload: { email: `spam${i}@example.com`, callbackURL: `${WEB_ORIGIN}/` },
+      });
+      codes.push(res.statusCode);
+    }
+    expect(codes.slice(0, 5)).toEqual([200, 200, 200, 200, 200]);
+    expect(codes[5]).toBe(429);
+    await app.close();
+  });
+});
+
 describe('perfil (/me)', () => {
   it('exige sesión', async () => {
     const res = await t.app.inject({ method: 'GET', url: '/me' });

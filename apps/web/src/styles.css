@@ -85,22 +85,281 @@ button:focus-visible {
   color: var(--muted);
 }
 
-/* --- Pantalla de entrada --- */
+/* --- Páginas (login, espacios, perfil, invitación) --- */
 
-.join {
-  min-height: 100vh;
+a {
+  color: var(--accent);
+}
+
+h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.page {
+  width: min(720px, 100%);
+  margin: 0 auto;
   display: grid;
-  align-content: center;
-  justify-items: center;
   gap: 16px;
   padding: 24px 16px;
 }
 
-.join-card {
+.page-center {
+  min-height: calc(100vh - 56px);
+  align-content: center;
+  justify-items: center;
+}
+
+.card {
   width: min(440px, 100%);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+}
+
+.stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.row > input,
+.row > select {
+  flex: 1 1 160px;
+  width: auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.brand {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.topbar button {
+  white-space: nowrap;
+}
+
+.stack h2 {
+  margin: 0;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.topbar-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  text-decoration: none;
+  min-width: 0;
+}
+
+.topbar-profile span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.button {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+button.google {
+  background: #ffffff;
+  color: #1f1f1f;
+}
+
+button.danger {
+  background: var(--down);
+  color: #ffffff;
+}
+
+button.secondary.danger {
+  background: transparent;
+  color: var(--down);
+  border-color: var(--down);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+.sent p {
+  margin: 0 0 8px;
+}
+
+.sent .link-button {
+  padding: 0;
+}
+
+.muted-link {
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.you {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.space-list,
+.member-list,
+.invite-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.space-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.space-link:hover {
+  border-color: var(--accent);
+}
+
+.space-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.role-badge {
+  flex: none;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+/* --- Panel del espacio (sobre el mapa) --- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 55%);
+}
+
+.space-panel {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+
+.space-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.space-panel-header h2 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.space-panel-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.member-name {
+  flex: 1 1 120px;
+  display: grid;
+  min-width: 0;
+}
+
+.member-name small {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member select {
+  width: auto;
+}
+
+.invite-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .field {

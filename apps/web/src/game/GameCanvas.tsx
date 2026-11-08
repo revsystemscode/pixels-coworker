@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import type { Room } from '@colyseus/sdk';
+import type { TiledMap } from '@pixels/shared';
 import type { MediaSession } from '../media/MediaSession.js';
 import { useApp } from '../store.js';
 import { VideoBubbles } from '../ui/VideoBubbles.js';
@@ -19,7 +20,15 @@ declare global {
 }
 
 /** Monta Phaser dentro de React y lo destruye al desmontar. */
-export function GameCanvas({ room, selfName }: { room: Room; selfName: string }) {
+export function GameCanvas({
+  room,
+  map,
+  selfName,
+}: {
+  room: Room;
+  map: TiledMap;
+  selfName: string;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const [fps, setFps] = useState<number | null>(null);
@@ -41,7 +50,7 @@ export function GameCanvas({ room, selfName }: { room: Room; selfName: string })
       scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
       scene: [],
     });
-    game.scene.add('world', WorldScene, true, { room });
+    game.scene.add('world', WorldScene, true, { room, map });
     gameRef.current = game;
 
     const scene = () => game.scene.getScene<WorldScene>('world') ?? null;
@@ -62,7 +71,7 @@ export function GameCanvas({ room, selfName }: { room: Room; selfName: string })
       gameRef.current = null;
       game.destroy(true);
     };
-  }, [room]);
+  }, [room, map]);
 
   return (
     <>

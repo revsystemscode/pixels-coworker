@@ -34,7 +34,9 @@ export const config = {
       env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
         ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
         : null,
-    rateLimit: env.AUTH_RATE_LIMIT !== 'off',
+    // Límite de intentos de login por IP: siempre en producción; en desarrollo, con AUTH_RATE_LIMIT=on
+    // (apagado por defecto para que las pruebas E2E puedan iniciar muchas sesiones seguidas).
+    rateLimit: env.AUTH_RATE_LIMIT ? env.AUTH_RATE_LIMIT !== 'off' : env.NODE_ENV === 'production',
   },
   mail: {
     /** En desarrollo, Mailpit (docker compose). */

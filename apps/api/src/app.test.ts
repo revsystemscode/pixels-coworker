@@ -41,4 +41,22 @@ describe('GET /health', () => {
     expect(res.headers['access-control-allow-origin']).toBe('http://localhost:5173');
     await app.close();
   });
+
+  it('permite PATCH y DELETE con cookies desde el frontend (preflight)', async () => {
+    const { app } = await createTestApp();
+    for (const method of ['PATCH', 'DELETE']) {
+      const res = await app.inject({
+        method: 'OPTIONS',
+        url: '/me',
+        headers: {
+          origin: 'http://localhost:5173',
+          'access-control-request-method': method,
+          'access-control-request-headers': 'content-type',
+        },
+      });
+      expect(res.headers['access-control-allow-methods']).toContain(method);
+      expect(res.headers['access-control-allow-credentials']).toBe('true');
+    }
+    await app.close();
+  });
 });

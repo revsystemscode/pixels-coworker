@@ -14,7 +14,7 @@ export interface AuthOptions {
   webOrigin: string;
   google: { clientId: string; clientSecret: string } | null;
   mailer: Mailer;
-  /** Límite de peticiones de login por IP. Solo se apaga en las pruebas E2E. */
+  /** Límite de peticiones de login por IP (obligatorio en producción). */
   rateLimit: boolean;
 }
 

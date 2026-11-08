@@ -20,6 +20,7 @@ import {
 import { env } from '../env.js';
 import { ProximityTracker, sameKeys } from './proximity.js';
 import { useMedia, type PeerMedia } from './store.js';
+import { openCamera, openMicrophone } from './tracks.js';
 
 /** Cada cuánto se recalcula quién está cerca (las posiciones llegan a 15 Hz). */
 const PROXIMITY_INTERVAL_MS = 150;
@@ -56,6 +57,7 @@ export class MediaSession {
 
   async start(preview: { camera: LocalVideoTrack | null; microphone: LocalAudioTrack | null }) {
     useMedia.setState({ status: 'connecting', error: null });
+    let tracks: (LocalVideoTrack | LocalAudioTrack)[] = [];
     try {
       const { url, token } = await this.fetchToken(await this.ticket);
       if (this.stopped) throw new Error('stopped');
@@ -65,9 +67,13 @@ export class MediaSession {
 
       // Nadie puede suscribirse a nuestras pistas hasta que esté cerca.
       this.livekit.localParticipant.setTrackSubscriptionPermissions(false, []);
+      // Si se pulsó «Entrar» antes de que la vista previa abriera la cámara o el micro, se abren
+      // aquí (la vista previa cierra la suya al desmontarse).
+      tracks = await this.withMissingPreview(preview);
+      if (this.stopped) throw new Error('stopped');
       // (Conversión: los tipos de livekit-client no encajan con exactOptionalPropertyTypes.)
-      for (const track of [preview.microphone, preview.camera])
-        if (track) await this.livekit.localParticipant.publishTrack(track as unknown as LocalTrack);
+      for (const track of tracks)
+        await this.livekit.localParticipant.publishTrack(track as unknown as LocalTrack);
 
       useMedia.setState({ status: 'connected' });
       this.syncLocal();
@@ -76,6 +82,7 @@ export class MediaSession {
     } catch (err) {
       preview.camera?.stop();
       preview.microphone?.stop();
+      tracks.forEach((t) => t.stop());
       if (this.stopped) return;
       console.warn('[media] no se pudo conectar', err);
       useMedia.setState({
@@ -83,6 +90,19 @@ export class MediaSession {
         error: 'No se pudo conectar el video. Puedes seguir usando el chat.',
       });
     }
+  }
+
+  private async withMissingPreview(preview: {
+    camera: LocalVideoTrack | null;
+    microphone: LocalAudioTrack | null;
+  }): Promise<(LocalVideoTrack | LocalAudioTrack)[]> {
+    const prefs = useMedia.getState().prefs;
+    const [microphone, camera] = await Promise.all([
+      preview.microphone ??
+        (prefs.microphone ? openMicrophone(prefs.microphoneId).catch(() => null) : null),
+      preview.camera ?? (prefs.camera ? openCamera(prefs.cameraId).catch(() => null) : null),
+    ]);
+    return [microphone, camera].filter((t) => t !== null);
   }
 
   async stop() {

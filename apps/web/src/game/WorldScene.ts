@@ -3,13 +3,12 @@ import { Callbacks, type Room } from '@colyseus/sdk';
 import {
   AVATAR_COUNT,
   ClientMessage,
-  DEFAULT_MAP,
   DIRECTIONS,
-  MAPS,
   TILE_SIZE,
   findPath,
   parseWorldMap,
   type Direction,
+  type TiledMap,
   type WorldMap,
 } from '@pixels/shared';
 import { Avatar } from './Avatar.js';
@@ -28,7 +27,11 @@ interface PlayerState {
 
 export interface WorldSceneData {
   room: Room;
+  /** Mapa del espacio (Tiled JSON), el mismo que usa el servidor. */
+  map: TiledMap;
 }
+
+const MAP_KEY = 'space-map';
 
 const TILESETS = [
   { name: 'kenney-roguelike-base', url: '/assets/tilesets/kenney-roguelike-base.png' },
@@ -43,6 +46,7 @@ type KeyMap = Record<Direction, Phaser.Input.Keyboard.Key[]>;
 
 export class WorldScene extends Phaser.Scene {
   private room!: Room;
+  private tiled!: TiledMap;
   private world!: WorldMap;
   private zoom = 3;
   private avatars = new Map<string, Avatar>();
@@ -58,12 +62,13 @@ export class WorldScene extends Phaser.Scene {
 
   init(data: WorldSceneData) {
     this.room = data.room;
-    this.world = parseWorldMap(MAPS[DEFAULT_MAP]);
+    this.tiled = data.map;
+    this.world = parseWorldMap(data.map);
     this.zoom = this.scale.width < 720 ? 2 : 3;
   }
 
   preload() {
-    this.load.tilemapTiledJSON(DEFAULT_MAP, MAPS[DEFAULT_MAP]);
+    this.load.tilemapTiledJSON(MAP_KEY, this.tiled);
     for (const t of TILESETS) this.load.image(t.name, t.url);
     this.load.spritesheet(CHARACTER_SHEET.key, CHARACTER_SHEET.url, {
       frameWidth: CHARACTER_SHEET.frameSize,
@@ -80,7 +85,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createMap() {
-    const map = this.make.tilemap({ key: DEFAULT_MAP });
+    const map = this.make.tilemap({ key: MAP_KEY });
     const tilesets = TILESETS.map((t) => map.addTilesetImage(t.name, t.name)).filter(
       (t): t is Phaser.Tilemaps.Tileset => t !== null,
     );

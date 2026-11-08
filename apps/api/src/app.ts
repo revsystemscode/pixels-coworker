@@ -39,7 +39,12 @@ export async function buildApp({
   const auth = createAuth(db, authOptions);
 
   // La sesión va en una cookie: el navegador la envía solo con `credentials: 'include'`.
-  await app.register(cors, { origin: corsOrigin, credentials: true });
+  await app.register(cors, {
+    origin: corsOrigin,
+    credentials: true,
+    // @fastify/cors solo permite GET, HEAD y POST si no se indica.
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
+  });
 
   // Contra CSRF: las peticiones que cambian algo solo se aceptan desde la web.
   app.addHook('onRequest', async (req, reply) => {

@@ -32,7 +32,10 @@ export function useCleanDatabase() {
   afterAll(() => sharedDb?.$disconnect());
 }
 
-export async function createTestApp(overrides: Partial<AppOptions> = {}) {
+export async function createTestApp({
+  rateLimit = false,
+  ...overrides
+}: Partial<AppOptions> & { rateLimit?: boolean } = {}) {
   const mails: Mail[] = [];
   const events: SpaceEvent[] = [];
   const app = await buildApp({
@@ -49,7 +52,7 @@ export async function createTestApp(overrides: Partial<AppOptions> = {}) {
       secret: 'test-better-auth-secret-0123456789abcdef',
       webOrigin: WEB_ORIGIN,
       google: null,
-      rateLimit: false,
+      rateLimit,
       mailer: async (mail) => {
         mails.push(mail);
       },
