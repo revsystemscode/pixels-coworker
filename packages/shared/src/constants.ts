@@ -38,3 +38,6 @@ export const CHAT_HISTORY_SIZE = 50;
 export const HEARING_RADIUS = 3;
 /** Volumen al borde del radio. Hasta 1 tile de distancia el volumen es 1. */
 export const MIN_HEARING_VOLUME = 0.3;
+
+/** Vida del ticket de medios (servidor de juego → API). Solo sirve para pedir el token al entrar. */
+export const MEDIA_TICKET_TTL_MS = 60_000;

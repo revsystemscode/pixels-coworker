@@ -13,6 +13,11 @@
       "source": "./src/testing.ts",
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"
+    },
+    "./media-ticket": {
+      "source": "./src/server/media-ticket.ts",
+      "types": "./dist/server/media-ticket.d.ts",
+      "default": "./dist/server/media-ticket.js"
     }
   },
   "scripts": {

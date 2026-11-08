@@ -5,6 +5,7 @@ import { createHealthChecks } from './health.js';
 const app = await buildApp({
   corsOrigin: config.corsOrigin,
   healthChecks: createHealthChecks(config),
+  media: config.media,
   logger: true,
 });
 

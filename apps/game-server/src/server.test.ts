@@ -9,10 +9,14 @@ import {
   parseWorldMap,
   type ChatEntry,
   type GameServerHealth,
+  type MediaTicketMessage,
 } from '@pixels/shared';
+import { verifyMediaTicket } from '@pixels/shared/media-ticket';
 import { tiledFromAscii } from '@pixels/shared/testing';
 import { WorldRoom } from './rooms/WorldRoom.js';
 import { createGameServer } from './server.js';
+
+const TICKET_SECRET = 'secreto-de-prueba';
 
 // Reloj controlado por las pruebas: el límite de velocidad depende del tiempo.
 let fakeNow = 0;
@@ -28,6 +32,7 @@ class TestRoom extends WorldRoom {
     ]),
   );
   protected override now = () => fakeNow;
+  protected override mediaTicketSecret = TICKET_SECRET;
 }
 
 const PORT = 25670;
@@ -154,5 +159,26 @@ describe('servidor de juego', () => {
       `hola ${CHAT_RATE_LIMIT - 2}`,
       `hola ${CHAT_RATE_LIMIT - 1}`,
     ]);
+  });
+
+  it('entrega un ticket de medios firmado con la identidad del jugador y limita los repetidos', async () => {
+    const tickets: string[] = [];
+    const alice = await join('Alice');
+    alice.onMessage(ServerMessage.MediaTicket, (m: MediaTicketMessage) => tickets.push(m.ticket));
+    await expect.poll(() => tickets.length).toBe(1);
+
+    const payload = verifyMediaTicket(tickets[0], TICKET_SECRET, fakeNow);
+    expect(payload).toMatchObject({ sid: alice.sessionId, name: 'Alice' });
+    expect(payload!.room).toBe(`world-${alice.roomId}`);
+    expect(verifyMediaTicket(tickets[0], 'otro-secreto', fakeNow)).toBeNull();
+
+    // Pedir otro enseguida no da nada; pasado el tiempo de espera, sí.
+    alice.send(ClientMessage.MediaTicket);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(tickets).toHaveLength(1);
+
+    fakeNow += 5_000;
+    alice.send(ClientMessage.MediaTicket);
+    await expect.poll(() => tickets.length).toBe(2);
   });
 });

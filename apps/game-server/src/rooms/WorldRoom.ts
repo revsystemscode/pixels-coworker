@@ -4,6 +4,7 @@ import {
   ClientMessage,
   DEFAULT_MAP,
   MAPS,
+  MEDIA_TICKET_TTL_MS,
   SERVER_TICK_RATE,
   ServerMessage,
   applyStep,
@@ -13,8 +14,10 @@ import {
   sanitizeChat,
   sanitizeName,
   type ChatEntry,
+  type MediaTicketMessage,
   type WorldMap,
 } from '@pixels/shared';
+import { signMediaTicket } from '@pixels/shared/media-ticket';
 import { config } from '../config.js';
 import { ChatLimiter, StepLimiter } from './limits.js';
 import { Player, WorldState } from './WorldState.js';
@@ -22,7 +25,11 @@ import { Player, WorldState } from './WorldState.js';
 interface ClientLimits {
   steps: StepLimiter;
   chat: ChatLimiter;
+  lastTicketAt: number;
 }
+
+/** Mínimo entre dos tickets de medios pedidos por el mismo jugador. */
+const MEDIA_TICKET_COOLDOWN_MS = 5_000;
 
 const defaultMap = parseWorldMap(MAPS[DEFAULT_MAP]);
 
@@ -37,6 +44,7 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   // leen de ahí. Las pruebas los sustituyen con una subclase.
   protected map: WorldMap = defaultMap;
   protected now: () => number = Date.now;
+  protected mediaTicketSecret = config.mediaTicketSecret;
   private limits = new Map<string, ClientLimits>();
   private chatHistory: ChatEntry[] = [];
   private chatCounter = 0;
@@ -44,6 +52,12 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   override onCreate() {
     this.onMessage(ClientMessage.Step, (client, raw) => this.handleStep(client, raw));
     this.onMessage(ClientMessage.Chat, (client, raw) => this.handleChat(client, raw));
+    this.onMessage(ClientMessage.MediaTicket, (client) => this.handleMediaTicket(client));
+  }
+
+  /** Sala de LiveKit asociada: una por sala de Colyseus. */
+  get mediaRoom() {
+    return `world-${this.roomId}`;
   }
 
   override onJoin(client: Client, options?: { name?: unknown; avatar?: unknown }) {
@@ -61,8 +75,10 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     this.limits.set(client.sessionId, {
       steps: new StepLimiter(this.now()),
       chat: new ChatLimiter(),
+      lastTicketAt: this.now(),
     });
     client.send(ServerMessage.ChatHistory, this.chatHistory);
+    this.sendMediaTicket(client);
   }
 
   override onLeave(client: Client) {
@@ -85,6 +101,28 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       player.x = next.x;
       player.y = next.y;
     }
+  }
+
+  private handleMediaTicket(client: Client) {
+    const limits = this.limits.get(client.sessionId);
+    if (!limits || this.now() - limits.lastTicketAt < MEDIA_TICKET_COOLDOWN_MS) return;
+    limits.lastTicketAt = this.now();
+    this.sendMediaTicket(client);
+  }
+
+  private sendMediaTicket(client: Client) {
+    const player = this.state.players.get(client.sessionId);
+    if (!player) return;
+    const ticket = signMediaTicket(
+      {
+        sid: client.sessionId,
+        room: this.mediaRoom,
+        name: player.name,
+        exp: this.now() + MEDIA_TICKET_TTL_MS,
+      },
+      this.mediaTicketSecret,
+    );
+    client.send(ServerMessage.MediaTicket, { ticket } satisfies MediaTicketMessage);
   }
 
   private handleChat(client: Client, raw: unknown) {

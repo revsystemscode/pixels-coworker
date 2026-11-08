@@ -5,12 +5,16 @@ import { isDirection, type Direction } from './direction.js';
 export const ClientMessage = {
   Step: 'step',
   Chat: 'chat',
+  /** Pide un ticket de medios nuevo (por ejemplo, para reconectar el video). */
+  MediaTicket: 'media-ticket',
 } as const;
 
 /** Mensajes que el servidor de juego envía a los clientes. */
 export const ServerMessage = {
   Chat: 'chat',
   ChatHistory: 'chat-history',
+  /** Ticket de medios firmado ({ ticket }). Se envía al entrar y cuando se pide. */
+  MediaTicket: 'media-ticket',
 } as const;
 
 /** Opciones al entrar en la sala. */
@@ -36,6 +40,21 @@ export interface ChatEntry {
   text: string;
   /** Milisegundos desde epoch (hora del servidor). */
   at: number;
+}
+
+export interface MediaTicketMessage {
+  ticket: string;
+}
+
+/** POST /media/token (API). */
+export interface MediaTokenRequest {
+  ticket: string;
+}
+
+export interface MediaTokenResponse {
+  /** URL de señalización de LiveKit (ws:// o wss://). */
+  url: string;
+  token: string;
 }
 
 // --- Validación de lo que llega del cliente (nunca confiar en él) ---

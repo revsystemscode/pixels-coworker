@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiHealth } from '@pixels/shared';
 import { buildApp } from './app.js';
+import { testMedia } from './test-config.js';
 
 describe('GET /health', () => {
   it('informa el estado de cada dependencia', async () => {
@@ -11,6 +12,7 @@ describe('GET /health', () => {
         redis: async () => 'down',
         livekit: async () => 'up',
       },
+      media: testMedia,
     });
 
     const res = await app.inject({ method: 'GET', url: '/health' });
@@ -32,6 +34,7 @@ describe('GET /health', () => {
         redis: async () => 'up',
         livekit: async () => 'up',
       },
+      media: testMedia,
     });
 
     const res = await app.inject({
