@@ -228,10 +228,19 @@ export class WorldScene extends Phaser.Scene {
     return result;
   }
 
+  /** Solo pruebas E2E: camina hasta una casilla como si se hubiera hecho clic en ella. */
+  debugWalkTo(target: { x: number; y: number }): boolean {
+    if (!this.predictor) return false;
+    const path = findPath(this.world, this.predictor.position, target);
+    this.path = path ?? [];
+    return path !== null;
+  }
+
   /** Datos para pruebas E2E y depuración. */
   debugSnapshot() {
     return {
       selfId: this.room.sessionId,
+      tile: this.predictor?.position ?? null,
       fps: Math.round(this.game.loop.actualFps),
       players: [...this.avatars.entries()].map(([id, a]) => ({
         id,

@@ -340,7 +340,7 @@ export class MediaSession {
       id: p.identity,
       subscribed: [...p.trackPublications.values()]
         .filter((pub) => pub.isSubscribed)
-        .map((pub) => pub.source),
+        .map((pub) => String(pub.source)),
       volume: this.connected.get(p.identity) ?? 0,
     }));
     return {

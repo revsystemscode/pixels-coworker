@@ -12,6 +12,7 @@ declare global {
     __pixels?: {
       snapshot: () => ReturnType<WorldScene['debugSnapshot']> | null;
       media: () => ReturnType<MediaSession['debugSnapshot']> | null;
+      walkTo: (x: number, y: number) => boolean;
       game: Phaser.Game;
     };
   }
@@ -49,6 +50,7 @@ export function GameCanvas({ room, selfName }: { room: Room; selfName: string })
       window.__pixels = {
         snapshot: () => scene()?.debugSnapshot() ?? null,
         media: () => useApp.getState().media?.debugSnapshot() ?? null,
+        walkTo: (x, y) => scene()?.debugWalkTo({ x, y }) ?? false,
         game,
       };
       fpsTimer = window.setInterval(() => setFps(Math.round(game.loop.actualFps)), 500);

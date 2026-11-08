@@ -52,38 +52,50 @@ export function VideoBubbles({
 
   const container = useRef<HTMLDivElement>(null);
   const elements = useRef(new Map<string, HTMLDivElement>());
-  const ids = useRef<string[]>([]);
   const idList = items.map((i) => i.id).join(',');
-  useLayoutEffect(() => {
-    ids.current = idList ? idList.split(',') : [];
-  }, [idList]);
 
+  // Tamaño de la zona visible, sin medir el DOM en cada fotograma.
+  const viewport = useRef({ width: 0, height: 0 });
   useEffect(() => {
+    const el = container.current;
+    if (!el) return;
+    const measure = () => {
+      viewport.current = { width: el.clientWidth, height: el.clientHeight };
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // El bucle solo corre mientras hay burbujas, y solo toca el DOM si algo se movió.
+  useLayoutEffect(() => {
+    if (!idList) return;
+    const ids = idList.split(',');
+    const last = new Map<string, string>();
     let frame = 0;
     const tick = () => {
       frame = requestAnimationFrame(tick);
-      const box = container.current?.getBoundingClientRect();
-      if (!box || ids.current.length === 0) return;
       const positions = getPositions();
-      const anchors = ids.current.flatMap((id) => {
+      const anchors = ids.flatMap((id) => {
         const p = positions.get(id);
         return p ? [{ id, ...p }] : [];
       });
-      const layout = layoutBubbles(anchors, {
+      for (const { id, left, top } of layoutBubbles(anchors, {
         ...SIZE,
-        viewport: { width: box.width, height: box.height },
-      });
-      for (const { id, left, top } of layout) {
+        viewport: viewport.current,
+      })) {
+        const transform = `translate(${left}px, ${top}px)`;
         const el = elements.current.get(id);
-        if (el) {
-          el.style.transform = `translate(${left}px, ${top}px)`;
-          el.style.visibility = 'visible';
-        }
+        if (!el || last.get(id) === transform) continue;
+        last.set(id, transform);
+        el.style.transform = transform;
+        el.style.visibility = 'visible';
       }
     };
     tick();
     return () => cancelAnimationFrame(frame);
-  }, [getPositions]);
+  }, [idList, getPositions]);
 
   return (
     <div ref={container} className="bubbles" aria-label="Video de las personas cercanas">

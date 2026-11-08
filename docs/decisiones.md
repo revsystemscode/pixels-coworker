@@ -2,6 +2,30 @@
 
 Registro breve de decisiones de producto y de arquitectura. Lo más reciente, arriba.
 
+## Video por proximidad (Fase 2)
+
+| Tema               | Decisión                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| Radio              | 3 casillas (distancia euclídea). Volumen 1 hasta 1 casilla y baja hasta 0,3 en el borde        |
+| Zonas privadas     | Rectángulos en la capa `zones` de Tiled. Dentro, se oye a toda la zona y a nadie de fuera      |
+| Dónde va el video  | Burbujas sobre los avatares; la pantalla compartida, en un panel grande aparte                 |
+| Margen al alejarse | 1,5 s conectado (en silencio y sin video) tras salir del radio: evita cortes en el borde       |
+| Sala de LiveKit    | Una por sala de Colyseus (`world-<roomId>`); identidad = `sessionId` del jugador               |
+| Pantalla previa    | Vista previa de cámara, nivel de micrófono y dispositivos. Se puede entrar sin cámara ni micro |
+
+- **Quién puede pedir un token.** Al entrar, el servidor de juego entrega a cada jugador un _ticket_
+  firmado (HMAC-SHA256, 60 s) con su `sessionId`. La API lo canjea por el token de LiveKit con esa
+  identidad. Así nadie puede pedir un token en nombre de otro y las claves de LiveKit solo están en la
+  API. El secreto (`MEDIA_TICKET_SECRET`) lo comparten la API y el servidor de juego.
+- **Quién recibe mi video.** Cada cliente calcula a quién tiene cerca con las posiciones del servidor
+  y la regla común (`hearingVolume` en `@pixels/shared`). Con eso hace dos cosas: se suscribe solo a
+  esas personas y **solo les da permiso** a ellas para suscribirse a sus pistas (permisos de pista de
+  LiveKit, que aplica el servidor de LiveKit). Un cliente modificado no puede recibir el video ni el
+  audio de quien está lejos. Límite conocido: durante el margen de 1,5 s el permiso sigue activo.
+- El token no permite enviar datos por LiveKit ni cambiar metadatos; solo cámara, micrófono y
+  pantalla (con su audio).
+- Si LiveKit no está disponible, el mundo y el chat siguen funcionando; se avisa en la barra inferior.
+
 ## Datos del equipo (Fase 0–1)
 
 | Tema                       | Decisión                                                                                 |
@@ -12,7 +36,7 @@ Registro breve de decisiones de producto y de arquitectura. Lo más reciente, ar
 | Movimiento                 | Por casillas de 16 px, 4 direcciones, 160 ms por casilla                                 |
 | API                        | Fastify                                                                                  |
 | MVP (fases 0–3) incluye    | Video por proximidad, compartir pantalla, zonas privadas, login con Google y **pizarra** |
-| Pendiente                  | Hosting y presupuesto (antes de la Fase 6), dominio                                      |
+| Pendiente                  | Hosting y presupuesto (antes de la Fase 6), dominio. En qué fase entra la pizarra        |
 
 La **pizarra colaborativa** estaba en la Fase 4 del plan original; el equipo la pidió en el MVP, así que
 se adelanta. Habrá que decidir en qué fase entra (propuesta: al final de la Fase 3).

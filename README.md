@@ -2,7 +2,7 @@
 
 Plataforma web de reuniones en un mundo 2D (vista cenital, pixel art) con video y audio por proximidad.
 
-Estado: **Fase 1 · Mundo multijugador** (sin video todavía). Ver [`docs/decisiones.md`](./docs/decisiones.md).
+Estado: **Fase 2 · Video por proximidad**. Ver [`docs/decisiones.md`](./docs/decisiones.md).
 
 ## Requisitos
 
@@ -24,7 +24,7 @@ en paralelo:
 | App                | URL                                                | Qué es                                       |
 | ------------------ | -------------------------------------------------- | -------------------------------------------- |
 | `apps/web`         | http://localhost:5173                              | React + Vite + Phaser                        |
-| `apps/api`         | http://localhost:3001/health                       | API Fastify                                  |
+| `apps/api`         | http://localhost:3001/health                       | API Fastify (tokens de LiveKit)              |
 | `apps/game-server` | ws://localhost:2567 · http://localhost:2567/health | Servidor Colyseus                            |
 | LiveKit            | ws://localhost:7880                                | SFU de video (modo dev: `devkey` / `secret`) |
 | PostgreSQL         | localhost:5432                                     | usuario, clave y base: `pixels`              |
@@ -33,6 +33,35 @@ en paralelo:
 Sin Docker puedes arrancar solo las apps con `pnpm dev:apps` (los servicios aparecerán como `down`).
 
 ## Cómo probar
+
+### Fase 2 · Video por proximidad
+
+Necesita LiveKit en marcha (`pnpm dev` lo levanta con Docker). Usa tres navegadores (por ejemplo,
+Chrome normal, Chrome en modo incógnito y Firefox) y, si es posible, auriculares para evitar eco.
+
+1. `pnpm dev` y abre http://localhost:5173 en los tres navegadores.
+2. En la pantalla de entrada verás la vista previa de tu cámara y una barra con el nivel del micrófono.
+   Puedes apagar la cámara o el micrófono y elegir dispositivo. Si no das permiso, puedes entrar igual.
+3. Entra con A y B: al aparecer juntos se ven en burbujas de video sobre los avatares y se oyen.
+4. Con C, aléjate más de 3 casillas antes de que entren los demás: C no ve ni oye a A y B. Acércate a
+   menos de 3 casillas y empezarás a oírlos; el volumen baja con la distancia.
+5. Zona privada: entra con A en la **sala de reuniones** (arriba a la izquierda). Arriba aparece
+   «Sala de reuniones · privada». B, desde la puerta, ya no oye a A aunque esté a 3 casillas. Si B
+   entra en la sala, se oyen aunque estén lejos dentro de ella. La **sala de concentración** (arriba a
+   la derecha) funciona igual.
+6. La barra inferior silencia el micrófono, apaga la cámara, comparte pantalla (los que están cerca la
+   ven en un panel grande) y cambia de cámara, micrófono o altavoz.
+
+Prueba automática del criterio de aceptación (3 navegadores con cámara simulada):
+
+```bash
+docker compose up -d livekit
+pnpm --filter @pixels/web e2e media
+```
+
+Si ya tienes otra copia del proyecto en los puertos por defecto, puedes lanzar las pruebas en otros:
+`WEB_PORT=5273 GAME_SERVER_PORT=2667 API_PORT=3101 CORS_ORIGIN=http://localhost:5273
+VITE_API_URL=http://localhost:3101 VITE_GAME_SERVER_URL=http://localhost:2667 pnpm --filter @pixels/web e2e`.
 
 ### Fase 1 · Mundo multijugador
 
@@ -46,7 +75,7 @@ Pruebas automáticas:
 
 ```bash
 pnpm test                                   # unitarias e integración (Vitest)
-pnpm --filter @pixels/web e2e               # E2E con Playwright (2 navegadores, chat, clic)
+pnpm --filter @pixels/web e2e               # E2E con Playwright (movimiento, chat, clic y video)
 ```
 
 Prueba de carga (50 bots paseando por la oficina):
@@ -70,14 +99,16 @@ integrada (Intel UHD 630): 60 FPS estables con 50 bots.
 
 ```
 apps/
-  web/            React 18 + Vite + Phaser 3 (src/game: escena, avatares, predicción)
+  web/            React 18 + Vite + Phaser 3 (src/game: escena, avatares, predicción;
+                  src/media: LiveKit y proximidad; src/ui: pantallas, burbujas y controles)
     public/assets/  tilesets y personajes (Kenney, CC0)
     e2e/            pruebas E2E con Playwright
-  game-server/    Colyseus: sala "world", autoridad del movimiento y el chat
+  game-server/    Colyseus: sala "world", autoridad del movimiento y el chat, tickets de medios
     scripts/bots.ts bots para pruebas de carga
-  api/            Fastify: salud de servicios; tokens de LiveKit en la Fase 2
+  api/            Fastify: salud de servicios y POST /media/token (tokens de LiveKit)
 packages/
-  shared/         tipos, protocolo, mapa, colisiones y búsqueda de caminos (cliente y servidor)
+  shared/         tipos, protocolo, mapa, zonas, proximidad, colisiones y caminos (cliente y servidor)
+                  media-ticket: firma de tickets (solo servidores)
     src/maps/       mapas en formato Tiled JSON
 tools/            scripts para preparar assets y generar el mapa inicial
 docker-compose.yml   Postgres, Redis y LiveKit para desarrollo local
@@ -92,6 +123,8 @@ dibujar) y el servidor (para validar colisiones). Se pueden abrir y editar con
 - Tiles de 16 px. Capas de tiles visibles: `floor`, `walls`, `decor-below`, `furniture`.
 - Capa de tiles `collision` (oculta): cualquier tile pintado bloquea el paso.
 - Capa de objetos `spawn` con un punto llamado `spawn`: donde aparecen los jugadores.
+- Capa de objetos `zones` (opcional): cada **rectángulo** es una zona privada. Su nombre es el que se
+  muestra al entrar («Sala de reuniones · privada»). Se ajusta a casillas completas.
 
 `office.json` se generó con `node tools/build-office-map.mjs`. Si lo editas en Tiled, no vuelvas a
 ejecutar ese script (sobrescribiría tus cambios).
@@ -120,6 +153,8 @@ request.
 
 - Commits con [Conventional Commits](https://www.conventionalcommits.org/es/) (`feat:`, `fix:`, `chore:`…).
 - Las claves de LiveKit solo viven en el servidor (API). Nunca en variables `VITE_*`.
+- `MEDIA_TICKET_SECRET` debe ser el mismo en la API y en el servidor de juego. En producción es
+  obligatorio (y también `LIVEKIT_API_KEY` y `LIVEKIT_API_SECRET`): sin ellos no arrancan.
 - Cada asset gráfico o sonoro se registra en [`ASSETS_LICENSES.md`](./ASSETS_LICENSES.md) antes de añadirlo.
 
 ## Notas de versiones
