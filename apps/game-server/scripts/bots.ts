@@ -1,13 +1,14 @@
-// Bots para pruebas de carga: entran a la sala y pasean por el mapa.
-//   pnpm --filter @pixels/game-server bots -- [cantidad] [segundos]
-// Para más de 25 bots, arranca el servidor con ROOM_MAX_CLIENTS=60.
+// Bots para pruebas de carga: entran a un espacio y pasean por el mapa.
+//   pnpm --filter @pixels/game-server bots -- [cantidad] [segundos] [id del espacio]
+// Sin id, usan el último espacio creado. Para más de 25 bots, arranca el servidor con
+// ROOM_MAX_CLIENTS=60. Firman sus propios tickets con TICKET_SECRET (solo para desarrollo).
 import { Client, type Room } from '@colyseus/sdk';
+import { createDb } from '@pixels/db';
 import {
   AVATAR_COUNT,
   ClientMessage,
-  DEFAULT_MAP,
   DIRECTIONS,
-  MAPS,
+  JOIN_TICKET_TTL_MS,
   MOVE_DURATION_MS,
   ServerMessage,
   WORLD_ROOM,
@@ -15,7 +16,10 @@ import {
   parseWorldMap,
   type Direction,
   type Point,
+  type TiledMap,
 } from '@pixels/shared';
+import { signJoinTicket } from '@pixels/shared/tickets';
+import { config } from '../src/config.js';
 
 const count = Number(process.argv[2] ?? 50);
 const seconds = Number(process.argv[3] ?? 0); // 0 = hasta Ctrl+C
@@ -23,7 +27,19 @@ const endpoint = (process.env.VITE_GAME_SERVER_URL ?? 'http://localhost:2567').r
   /^http/,
   'ws',
 );
-const map = parseWorldMap(MAPS[DEFAULT_MAP]);
+
+const db = createDb(config.databaseUrl);
+const space = await db.space.findFirst({
+  where: process.argv[4] ? { id: process.argv[4] } : {},
+  orderBy: { createdAt: 'desc' },
+  include: { map: { select: { data: true } } },
+});
+await db.$disconnect();
+if (!space) {
+  console.error('No hay ningún espacio. Crea uno en la web (o pasa su id) y vuelve a probar.');
+  process.exit(1);
+}
+const map = parseWorldMap(space.map.data as unknown as TiledMap);
 
 const randomDir = (): Direction => DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)]!;
 
@@ -51,10 +67,18 @@ function walk(bot: Bot) {
 const bots: Bot[] = [];
 const client = new Client(endpoint);
 for (let i = 0; i < count; i++) {
-  const room = await client.joinOrCreate(WORLD_ROOM, {
-    name: `Bot ${i + 1}`,
-    avatar: i % AVATAR_COUNT,
-  });
+  const ticket = signJoinTicket(
+    {
+      uid: `bot-${i + 1}`,
+      space: space.id,
+      name: `Bot ${i + 1}`,
+      avatar: i % AVATAR_COUNT,
+      role: 'guest',
+      exp: Date.now() + JOIN_TICKET_TTL_MS,
+    },
+    config.ticketSecret,
+  );
+  const room = await client.joinOrCreate(WORLD_ROOM, { spaceId: space.id, ticket });
   // Los bots ignoran el chat.
   room.onMessage(ServerMessage.ChatHistory, () => {});
   room.onMessage(ServerMessage.Chat, () => {});
@@ -64,7 +88,9 @@ for (let i = 0; i < count; i++) {
   bots.push(bot);
 }
 const rooms = new Set(bots.map((b) => b.room.roomId));
-console.log(`${bots.length} bots conectados a ${endpoint} (salas: ${rooms.size})`);
+console.log(
+  `${bots.length} bots en «${space.name}» (${endpoint}, salas: ${rooms.size}). Ctrl+C para parar.`,
+);
 
 async function stop() {
   for (const b of bots) clearInterval(b.timer);

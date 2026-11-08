@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { AccessToken, TrackSource } from 'livekit-server-sdk';
 import type { MediaTokenResponse } from '@pixels/shared';
-import { verifyMediaTicket } from '@pixels/shared/media-ticket';
+import { verifyMediaTicket } from '@pixels/shared/tickets';
 
 export interface MediaOptions {
   /** URL de LiveKit que se entrega al navegador. */
@@ -9,7 +9,7 @@ export interface MediaOptions {
   livekitApiKey: string;
   livekitApiSecret: string;
   /** Secreto compartido con el servidor de juego. */
-  mediaTicketSecret: string;
+  ticketSecret: string;
   now?: () => number;
 }
 
@@ -37,7 +37,7 @@ export function registerMediaRoutes(app: FastifyInstance, options: MediaOptions)
     },
     async (req, reply) => {
       const { ticket } = req.body as { ticket: string };
-      const payload = verifyMediaTicket(ticket, options.mediaTicketSecret, now());
+      const payload = verifyMediaTicket(ticket, options.ticketSecret, now());
       if (!payload) return reply.code(401).send({ error: 'Ticket no válido o caducado' });
 
       const token = new AccessToken(options.livekitApiKey, options.livekitApiSecret, {

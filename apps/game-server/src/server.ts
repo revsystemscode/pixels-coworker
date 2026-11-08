@@ -1,15 +1,13 @@
-import { Server, matchMaker, type Room } from '@colyseus/core';
+import { Server, matchMaker } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { WORLD_ROOM, type GameServerHealth } from '@pixels/shared';
-import { WorldRoom } from './rooms/WorldRoom.js';
+import { WorldRoom, type WorldRoomDeps } from './rooms/WorldRoom.js';
 
-export interface GameServerOptions {
+export interface GameServerOptions extends WorldRoomDeps {
   corsOrigin: string;
-  /** Clase de sala a usar (las pruebas pasan una subclase con otro mapa). */
-  roomClass?: new () => Room;
 }
 
-export function createGameServer({ corsOrigin, roomClass = WorldRoom }: GameServerOptions) {
+export function createGameServer({ corsOrigin, ...deps }: GameServerOptions) {
   const server = new Server({
     transport: new WebSocketTransport(),
     express: (app) => {
@@ -26,6 +24,11 @@ export function createGameServer({ corsOrigin, roomClass = WorldRoom }: GameServ
     },
   });
 
-  server.define(WORLD_ROOM, roomClass);
+  // Colyseus crea las salas sin argumentos: las dependencias van en una subclase.
+  class SpaceRoom extends WorldRoom {
+    protected override deps = deps;
+  }
+  // Una sala por espacio: quien pide el mismo `spaceId` entra a la misma sala.
+  server.define(WORLD_ROOM, SpaceRoom).filterBy(['spaceId']);
   return server;
 }

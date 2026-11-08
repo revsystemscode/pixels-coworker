@@ -1,6 +1,26 @@
+import { createDb } from '@pixels/db';
 import { config } from './config.js';
+import { subscribeSpaceEvents } from './events.js';
+import { handleSpaceEvent } from './rooms/WorldRoom.js';
 import { createGameServer } from './server.js';
+import { createDbSpaceStore } from './store.js';
 
-const server = createGameServer({ corsOrigin: config.corsOrigin });
+const db = createDb(config.databaseUrl);
+const server = createGameServer({
+  corsOrigin: config.corsOrigin,
+  store: createDbSpaceStore(db),
+  ticketSecret: config.ticketSecret,
+  maxClients: config.roomMaxClients,
+  onError: (message, err) => console.error(message, err),
+});
+const unsubscribe = subscribeSpaceEvents(config.redisUrl, handleSpaceEvent, (err) =>
+  console.error('Redis (eventos de espacios):', err),
+);
+
 await server.listen(config.port, '0.0.0.0');
 console.log(`Servidor de juego escuchando en ws://localhost:${config.port}`);
+
+server.onShutdown(async () => {
+  await unsubscribe();
+  await db.$disconnect();
+});

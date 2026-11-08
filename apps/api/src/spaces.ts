@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Db, Role as DbRole } from '@pixels/db';
+import type { PublishSpaceEvent } from './events.js';
 import {
   DEFAULT_MAP,
   MAPS,
@@ -36,7 +37,7 @@ type SpaceParams = { Params: { spaceId: string } };
 type MemberParams = { Params: { spaceId: string; userId: string } };
 
 /** Espacios, miembros y roles. Todas las rutas exigen sesión. */
-export function registerSpaceRoutes(app: FastifyInstance, db: Db) {
+export function registerSpaceRoutes(app: FastifyInstance, db: Db, publish: PublishSpaceEvent) {
   app.get('/spaces', async (req): Promise<SpaceSummary[]> => {
     const memberships = await db.membership.findMany({
       where: { userId: req.user.id },
@@ -105,6 +106,7 @@ export function registerSpaceRoutes(app: FastifyInstance, db: Db) {
       const space = await tx.space.delete({ where: { id: spaceId } });
       await tx.map.delete({ where: { id: space.mapId } });
     });
+    publish({ type: 'space-deleted', spaceId });
     return reply.code(204).send();
   });
 
@@ -152,6 +154,7 @@ export function registerSpaceRoutes(app: FastifyInstance, db: Db) {
     if (!target) return reply.code(404).send({ error: 'Esa persona no es miembro' });
     if (!canRemoveMember(actor, target, userId === req.user.id)) return forbidden(reply);
     await db.membership.delete({ where: { spaceId_userId: { spaceId, userId } } });
+    publish({ type: 'member-removed', spaceId, userId });
     return reply.code(204).send();
   });
 }

@@ -17,10 +17,10 @@ export const ServerMessage = {
   MediaTicket: 'media-ticket',
 } as const;
 
-/** Opciones al entrar en la sala. */
+/** Opciones al entrar en la sala: el espacio y el ticket que da la API (POST /spaces/:id/join). */
 export interface JoinOptions {
-  name: string;
-  avatar: number;
+  spaceId: string;
+  ticket: string;
 }
 
 /** Un paso de una casilla. `seq` crece en cada paso y permite reconciliar la predicción. */
@@ -56,6 +56,22 @@ export interface MediaTokenResponse {
   url: string;
   token: string;
 }
+
+/** Canal de Redis por el que la API avisa al servidor de juego de cambios en los espacios. */
+export const SPACE_EVENTS_CHANNEL = 'pixels:space-events';
+
+/** La API los publica; el servidor de juego saca de la sala a quien ya no tiene acceso. */
+export type SpaceEvent =
+  | { type: 'member-removed'; spaceId: string; userId: string }
+  | { type: 'space-deleted'; spaceId: string };
+
+/** Códigos con los que el servidor de juego cierra la conexión (el cliente muestra el motivo). */
+export const LeaveCode = {
+  /** La misma cuenta entró al espacio desde otra pestaña o dispositivo. */
+  Replaced: 4001,
+  /** Ya no es miembro del espacio (expulsado, salió o se borró el espacio). */
+  Removed: 4003,
+} as const;
 
 // --- Validación de lo que llega del cliente (nunca confiar en él) ---
 

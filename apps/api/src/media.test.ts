@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { TokenVerifier } from 'livekit-server-sdk';
 import type { MediaTokenResponse } from '@pixels/shared';
-import { signMediaTicket } from '@pixels/shared/media-ticket';
+import { signMediaTicket } from '@pixels/shared/tickets';
 import { createTestApp, testDb } from './test-config.js';
 
 const { app } = await createTestApp();

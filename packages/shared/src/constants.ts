@@ -41,3 +41,6 @@ export const MIN_HEARING_VOLUME = 0.3;
 
 /** Vida del ticket de medios (servidor de juego → API). Solo sirve para pedir el token al entrar. */
 export const MEDIA_TICKET_TTL_MS = 60_000;
+
+/** Vida del ticket para entrar a la sala de un espacio (API → servidor de juego). */
+export const JOIN_TICKET_TTL_MS = 60_000;

@@ -3,6 +3,7 @@ import { createDb, type Db } from '@pixels/db';
 import { resetDatabase, testDatabaseUrl } from '@pixels/db/testing';
 import { afterAll, beforeEach } from 'vitest';
 import { buildApp, type AppOptions } from './app.js';
+import type { SpaceEvent } from '@pixels/shared';
 import type { Mail } from './mail.js';
 import type { MediaOptions } from './media.js';
 
@@ -13,7 +14,7 @@ export const testMedia: MediaOptions = {
   livekitPublicUrl: 'ws://livekit.test',
   livekitApiKey: 'test-key',
   livekitApiSecret: 'test-secret-that-is-long-enough-123',
-  mediaTicketSecret: 'ticket-secret',
+  ticketSecret: 'ticket-secret',
   now: () => 1_000,
 };
 
@@ -33,6 +34,7 @@ export function useCleanDatabase() {
 
 export async function createTestApp(overrides: Partial<AppOptions> = {}) {
   const mails: Mail[] = [];
+  const events: SpaceEvent[] = [];
   const app = await buildApp({
     corsOrigin: WEB_ORIGIN,
     healthChecks: {
@@ -52,9 +54,10 @@ export async function createTestApp(overrides: Partial<AppOptions> = {}) {
         mails.push(mail);
       },
     },
+    publish: (event) => events.push(event),
     ...overrides,
   });
-  return { app, mails, db: testDb() };
+  return { app, mails, events, db: testDb() };
 }
 
 type TestApp = Awaited<ReturnType<typeof createTestApp>>;

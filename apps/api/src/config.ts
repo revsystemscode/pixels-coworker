@@ -7,7 +7,7 @@ if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const env = process.env;
 
-const DEV_MEDIA_TICKET_SECRET = 'dev-media-ticket-secret';
+const DEV_TICKET_SECRET = 'dev-ticket-secret';
 const DEV_AUTH_SECRET = 'dev-better-auth-secret-not-for-production';
 
 const port = Number(env.API_PORT ?? 3001);
@@ -24,7 +24,7 @@ export const config = {
     livekitPublicUrl: env.LIVEKIT_PUBLIC_URL ?? env.LIVEKIT_URL ?? 'ws://localhost:7880',
     livekitApiKey: env.LIVEKIT_API_KEY ?? 'devkey',
     livekitApiSecret: env.LIVEKIT_API_SECRET ?? 'secret',
-    mediaTicketSecret: env.MEDIA_TICKET_SECRET ?? DEV_MEDIA_TICKET_SECRET,
+    ticketSecret: env.TICKET_SECRET ?? DEV_TICKET_SECRET,
   },
   auth: {
     baseURL: env.API_PUBLIC_URL ?? `http://localhost:${port}`,
@@ -47,7 +47,7 @@ if (env.NODE_ENV === 'production') {
   const missing = [
     ['LIVEKIT_API_KEY', env.LIVEKIT_API_KEY],
     ['LIVEKIT_API_SECRET', env.LIVEKIT_API_SECRET],
-    ['MEDIA_TICKET_SECRET', env.MEDIA_TICKET_SECRET],
+    ['TICKET_SECRET', env.TICKET_SECRET],
     ['BETTER_AUTH_SECRET', env.BETTER_AUTH_SECRET],
     ['API_PUBLIC_URL', env.API_PUBLIC_URL],
     ['SMTP_URL', env.SMTP_URL],

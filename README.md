@@ -153,7 +153,7 @@ request.
 
 - Commits con [Conventional Commits](https://www.conventionalcommits.org/es/) (`feat:`, `fix:`, `chore:`…).
 - Las claves de LiveKit solo viven en el servidor (API). Nunca en variables `VITE_*`.
-- `MEDIA_TICKET_SECRET` debe ser el mismo en la API y en el servidor de juego. En producción es
+- `TICKET_SECRET` debe ser el mismo en la API y en el servidor de juego. En producción es
   obligatorio (y también `LIVEKIT_API_KEY` y `LIVEKIT_API_SECRET`): sin ellos no arrancan.
 - Cada asset gráfico o sonoro se registra en [`ASSETS_LICENSES.md`](./ASSETS_LICENSES.md) antes de añadirlo.
 

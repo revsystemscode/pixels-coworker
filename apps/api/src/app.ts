@@ -4,7 +4,9 @@ import type { Db } from '@pixels/db';
 import type { ApiHealth } from '@pixels/shared';
 import { createAuth, type AuthOptions } from './auth.js';
 import { registerAuthRoutes } from './auth-routes.js';
+import type { PublishSpaceEvent } from './events.js';
 import type { HealthChecks } from './health.js';
+import { registerJoinRoutes } from './join.js';
 import { registerInviteRoutes, registerPublicInviteRoutes } from './invites.js';
 import { registerMeRoutes } from './me.js';
 import { registerMediaRoutes, type MediaOptions } from './media.js';
@@ -17,6 +19,8 @@ export interface AppOptions {
   media: MediaOptions;
   db: Db;
   auth: AuthOptions;
+  /** Avisa al servidor de juego de expulsiones y espacios borrados. */
+  publish: PublishSpaceEvent;
   logger?: boolean;
 }
 
@@ -28,6 +32,7 @@ export async function buildApp({
   media,
   db,
   auth: authOptions,
+  publish,
   logger = false,
 }: AppOptions) {
   const app = Fastify({ logger });
@@ -59,7 +64,11 @@ export async function buildApp({
   registerPublicInviteRoutes(app, db);
   authenticated(app, auth, (scope) => {
     registerMeRoutes(scope, db);
-    registerSpaceRoutes(scope, db);
+    registerSpaceRoutes(scope, db, publish);
+    registerJoinRoutes(scope, db, {
+      ticketSecret: media.ticketSecret,
+      ...(media.now ? { now: media.now } : {}),
+    });
     registerInviteRoutes(scope, db);
   });
 
