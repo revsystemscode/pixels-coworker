@@ -17,6 +17,7 @@ import { api, errorMessage } from './api.js';
 import { env } from './env.js';
 import { MediaSession } from './media/MediaSession.js';
 import { useMedia } from './media/store.js';
+import { useBoard } from './whiteboard/store.js';
 
 const MAX_MESSAGES = 200;
 
@@ -94,6 +95,7 @@ export const useApp = create<AppState>((set, get) => ({
       );
       room.onLeave((code: number) => {
         if (get().room !== room) return;
+        useBoard.getState().close();
         void get().media?.stop();
         set({
           phase: 'idle',
@@ -114,6 +116,7 @@ export const useApp = create<AppState>((set, get) => ({
 
   leave: async () => {
     const { room, media } = get();
+    useBoard.getState().close();
     set({ phase: 'idle', room: null, media: null, error: null });
     await Promise.all([media?.stop(), room?.leave()]);
   },

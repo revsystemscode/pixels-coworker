@@ -5,12 +5,19 @@ import {
   ClientMessage,
   DIRECTIONS,
   TILE_SIZE,
+  WHITEBOARD_REACH,
+  distanceToRect,
   findPath,
+  findPathWhere,
   parseWorldMap,
+  whiteboardAt,
+  whiteboardNear,
   type Direction,
   type TiledMap,
+  type Whiteboard,
   type WorldMap,
 } from '@pixels/shared';
+import { useBoard } from '../whiteboard/store.js';
 import { Avatar } from './Avatar.js';
 import { CHARACTER_SHEET, WALK_FRAME_RATE, walkAnimKey, walkFrames } from './characters.js';
 import { Predictor } from './prediction.js';
@@ -55,6 +62,9 @@ export class WorldScene extends Phaser.Scene {
   private path: Direction[] = [];
   private keys!: KeyMap;
   private detach: (() => void)[] = [];
+  /** Pizarra que se abrirá al llegar (tras hacer clic en ella desde lejos). */
+  private boardTarget: Whiteboard | null = null;
+  private boardHighlights = new Map<string, Phaser.GameObjects.Graphics>();
 
   constructor() {
     super('world');
@@ -90,12 +100,41 @@ export class WorldScene extends Phaser.Scene {
       (t): t is Phaser.Tilemaps.Tileset => t !== null,
     );
     VISIBLE_LAYERS.forEach((name, i) => map.createLayer(name, tilesets)?.setDepth(i));
+    this.createWhiteboards();
 
     const cam = this.cameras.main;
     cam.setZoom(this.zoom);
     cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     cam.setBackgroundColor('#12161f');
     cam.roundPixels = true;
+  }
+
+  /** Dibuja las pizarras del mapa (el pack de Kenney no trae ninguna) y su resaltado. */
+  private createWhiteboards() {
+    const T = TILE_SIZE;
+    for (const b of this.world.whiteboards) {
+      const x = b.x * T + 2;
+      const y = b.y * T + 3;
+      const w = b.width * T - 4;
+      const h = b.height * T - 7;
+      const g = this.add.graphics().setDepth(VISIBLE_LAYERS.length);
+      g.fillStyle(0x6b7280).fillRect(x, y, w, h); // marco
+      g.fillStyle(0xf8fafc).fillRect(x + 1, y + 1, w - 2, h - 2);
+      g.fillStyle(0x9ca3af).fillRect(x + 2, y + h, w - 4, 2); // bandeja
+      // Unos trazos de rotulador.
+      g.fillStyle(0x3b82f6).fillRect(x + 4, y + 4, Math.min(14, w - 8), 1);
+      g.fillStyle(0x3b82f6).fillRect(x + 4, y + 7, Math.min(9, w - 8), 1);
+      g.fillStyle(0xef4444).fillRect(x + w - 14, y + 5, 8, 5);
+      g.fillStyle(0xf8fafc).fillRect(x + w - 13, y + 6, 6, 3);
+
+      const highlight = this.add
+        .graphics()
+        .setDepth(VISIBLE_LAYERS.length)
+        .lineStyle(1, 0xfacc15)
+        .strokeRect(x - 1.5, y - 1.5, w + 3, h + 4)
+        .setVisible(false);
+      this.boardHighlights.set(b.id, highlight);
+    }
   }
 
   private createAnimations() {
@@ -127,14 +166,54 @@ export class WorldScene extends Phaser.Scene {
       right: add(K.RIGHT, K.D),
     };
 
+    // E abre la pizarra que tengamos cerca.
+    kb.addKey(K.E, false).on('down', () => {
+      const { near, open } = useBoard.getState();
+      if (near && !open && !this.typing()) this.openBoard(near);
+    });
+
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (!this.predictor) return;
+      if (!this.predictor || useBoard.getState().open) return;
       const target = {
         x: Math.floor(pointer.worldX / TILE_SIZE),
         y: Math.floor(pointer.worldY / TILE_SIZE),
       };
+      this.boardTarget = null;
+      // Clic en una pizarra: se abre (caminando antes hasta ella si está lejos).
+      const board = whiteboardAt(this.world, target);
+      if (board) {
+        const here = this.predictor.position;
+        this.path =
+          findPathWhere(
+            this.world,
+            here,
+            (x, y) => distanceToRect({ x, y }, board) <= WHITEBOARD_REACH,
+          ) ?? [];
+        if (this.path.length === 0 && distanceToRect(here, board) <= WHITEBOARD_REACH) {
+          this.openBoard(board);
+        } else if (this.path.length > 0) {
+          this.boardTarget = board;
+        }
+        return;
+      }
       this.path = findPath(this.world, this.predictor.position, target) ?? [];
     });
+  }
+
+  private openBoard(board: Whiteboard) {
+    this.boardTarget = null;
+    this.path = [];
+    useBoard.getState().openBoard(this.room, board);
+  }
+
+  /** Avisa a la interfaz de qué pizarra tenemos cerca y la resalta en el mapa. */
+  private updateNearBoard() {
+    if (!this.predictor) return;
+    const near = whiteboardNear(this.world, this.predictor.position);
+    if (useBoard.getState().near?.id !== near?.id) {
+      useBoard.setState({ near });
+      for (const [id, g] of this.boardHighlights) g.setVisible(id === near?.id);
+    }
   }
 
   private bindState() {
@@ -186,11 +265,22 @@ export class WorldScene extends Phaser.Scene {
 
   override update() {
     if (!this.self || !this.predictor || this.self.isMoving) return;
+    this.updateNearBoard();
+    // Con la pizarra abierta, el teclado es para dibujar.
+    if (useBoard.getState().open) return;
 
     const keyDir = this.typing() ? null : this.heldDirection();
-    if (keyDir) this.path = [];
+    if (keyDir) {
+      this.path = [];
+      this.boardTarget = null;
+    }
     const dir = keyDir ?? this.path.shift();
-    if (!dir) return;
+    if (!dir) {
+      if (this.boardTarget && useBoard.getState().near?.id === this.boardTarget.id) {
+        this.openBoard(this.boardTarget);
+      }
+      return;
+    }
 
     const { seq, next } = this.predictor.step(dir);
     this.room.send(ClientMessage.Step, { dir, seq });
@@ -256,6 +346,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private cleanup() {
+    useBoard.setState({ near: null });
+    this.boardHighlights.clear();
     this.detach.forEach((off) => off());
     this.detach = [];
     this.avatars.forEach((a) => a.destroy());

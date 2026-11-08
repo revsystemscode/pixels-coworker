@@ -15,6 +15,8 @@ declare global {
       media: () => ReturnType<MediaSession['debugSnapshot']> | null;
       walkTo: (x: number, y: number) => boolean;
       game: Phaser.Game;
+      /** Lo dibujado en la pizarra abierta (solo mientras hay una abierta). */
+      board?: () => { id: string; type: string }[];
     };
   }
 }
