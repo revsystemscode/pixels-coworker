@@ -5,9 +5,11 @@ import type { ApiHealth } from '@pixels/shared';
 import { createAuth, type AuthOptions } from './auth.js';
 import { registerAuthRoutes } from './auth-routes.js';
 import type { HealthChecks } from './health.js';
+import { registerInviteRoutes, registerPublicInviteRoutes } from './invites.js';
 import { registerMeRoutes } from './me.js';
 import { registerMediaRoutes, type MediaOptions } from './media.js';
 import { authenticated } from './session.js';
+import { registerSpaceRoutes } from './spaces.js';
 
 export interface AppOptions {
   corsOrigin: string;
@@ -54,8 +56,11 @@ export async function buildApp({
 
   registerAuthRoutes(app, auth, { baseURL: authOptions.baseURL, google: !!authOptions.google });
   registerMediaRoutes(app, media);
+  registerPublicInviteRoutes(app, db);
   authenticated(app, auth, (scope) => {
     registerMeRoutes(scope, db);
+    registerSpaceRoutes(scope, db);
+    registerInviteRoutes(scope, db);
   });
 
   return app;

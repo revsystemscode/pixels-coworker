@@ -34,10 +34,14 @@ export interface SpaceSummary {
 export interface Member {
   userId: string;
   name: string;
-  email: string;
+  /** Solo lo ven el dueño y los admins. */
+  email: string | null;
   avatar: number;
   role: Role;
 }
+
+/** Máximo de espacios que puede crear (y tener como dueño) una persona. */
+export const MAX_OWNED_SPACES = 20;
 
 /** POST /spaces/:id/invites */
 export interface CreateInviteRequest {
