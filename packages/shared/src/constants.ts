@@ -44,3 +44,19 @@ export const MEDIA_TICKET_TTL_MS = 60_000;
 
 /** Vida del ticket para entrar a la sala de un espacio (API → servidor de juego). */
 export const JOIN_TICKET_TTL_MS = 60_000;
+
+// --- Pizarra ---
+
+/** Se puede abrir una pizarra desde WHITEBOARD_REACH casillas o menos (en cualquier dirección). */
+export const WHITEBOARD_REACH = 2;
+/** Máximo de elementos por pizarra (contando los borrados que aún se guardan). */
+export const WHITEBOARD_MAX_ELEMENTS = 3000;
+/** Tamaño máximo de una pizarra (JSON) y de un elemento. */
+export const WHITEBOARD_MAX_BYTES = 2_000_000;
+export const WHITEBOARD_MAX_ELEMENT_BYTES = 100_000;
+/** Tamaño máximo de un mensaje de cambios (el cliente parte los más grandes). */
+export const WHITEBOARD_MAX_UPDATE_BYTES = 200_000;
+/** Cada cuánto envía el cliente sus cambios y su puntero mientras dibuja. */
+export const WHITEBOARD_SEND_INTERVAL_MS = 100;
+/** Tras el último cambio, el servidor espera esto antes de guardar la pizarra. */
+export const WHITEBOARD_SAVE_DELAY_MS = 2_000;

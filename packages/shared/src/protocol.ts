@@ -7,6 +7,14 @@ export const ClientMessage = {
   Chat: 'chat',
   /** Pide un ticket de medios nuevo (por ejemplo, para reconectar el video). */
   MediaTicket: 'media-ticket',
+  /** Abre una pizarra ({ boardId }). Hay que estar cerca. Ver whiteboard.ts. */
+  BoardOpen: 'board-open',
+  /** Cierra la pizarra abierta. */
+  BoardClose: 'board-close',
+  /** Elementos que han cambiado ({ boardId, elements }). */
+  BoardUpdate: 'board-update',
+  /** Posición del puntero dentro de la pizarra. */
+  BoardPointer: 'board-pointer',
 } as const;
 
 /** Mensajes que el servidor de juego envía a los clientes. */
@@ -15,6 +23,13 @@ export const ServerMessage = {
   ChatHistory: 'chat-history',
   /** Ticket de medios firmado ({ ticket }). Se envía al entrar y cuando se pide. */
   MediaTicket: 'media-ticket',
+  /** Contenido completo de la pizarra (al abrirla o para volver a sincronizar). */
+  BoardScene: 'board-scene',
+  /** Elementos que han cambiado otras personas. */
+  BoardUpdate: 'board-update',
+  BoardPointer: 'board-pointer',
+  BoardViewers: 'board-viewers',
+  BoardError: 'board-error',
 } as const;
 
 /** Opciones al entrar en la sala: el espacio y el ticket que da la API (POST /spaces/:id/join). */

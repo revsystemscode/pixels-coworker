@@ -12,9 +12,14 @@ export interface TestZone {
 /**
  * Crea un TiledMap pequeño a partir de un dibujo ASCII, para pruebas.
  * '#' = bloqueado, '.' = libre, 'S' = libre y punto de aparición.
- * `zones` (en tiles) añade la capa de zonas privadas.
+ * `zones` y `whiteboards` (en tiles) añaden la capa de zonas privadas y la de pizarras.
  */
-export function tiledFromAscii(rows: string[], tileSize = 16, zones: TestZone[] = []): TiledMap {
+export function tiledFromAscii(
+  rows: string[],
+  tileSize = 16,
+  zones: TestZone[] = [],
+  whiteboards: TestZone[] = [],
+): TiledMap {
   const width = rows[0]!.length;
   const height = rows.length;
   const data: number[] = [];
@@ -25,6 +30,23 @@ export function tiledFromAscii(rows: string[], tileSize = 16, zones: TestZone[] 
       if (c === 'S') spawn = { x, y };
     }),
   );
+  const rectLayer = (name: string, rects: TestZone[]) =>
+    rects.length
+      ? [
+          {
+            type: 'objectgroup' as const,
+            name,
+            objects: rects.map((z, i) => ({
+              id: i + 1,
+              name: z.name,
+              x: z.x * tileSize,
+              y: z.y * tileSize,
+              width: z.width * tileSize,
+              height: z.height * tileSize,
+            })),
+          },
+        ]
+      : [];
   return {
     width,
     height,
@@ -39,22 +61,8 @@ export function tiledFromAscii(rows: string[], tileSize = 16, zones: TestZone[] 
           { name: 'spawn', point: true, x: spawn.x * tileSize + 8, y: spawn.y * tileSize + 8 },
         ],
       },
-      ...(zones.length
-        ? [
-            {
-              type: 'objectgroup' as const,
-              name: 'zones',
-              objects: zones.map((z, i) => ({
-                id: i + 1,
-                name: z.name,
-                x: z.x * tileSize,
-                y: z.y * tileSize,
-                width: z.width * tileSize,
-                height: z.height * tileSize,
-              })),
-            },
-          ]
-        : []),
+      ...rectLayer('zones', zones),
+      ...rectLayer('whiteboards', whiteboards),
     ],
   };
 }

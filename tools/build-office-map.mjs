@@ -220,6 +220,42 @@ const ZONES = [
   { name: 'Sala de reuniones', x: 1, y: 1, width: 12, height: 7 },
   { name: 'Sala de concentración', x: 25, y: 1, width: 14, height: 7 },
 ];
+// Pizarras (en tiles), sobre la cara de la pared. Se abren desde 2 casillas o menos.
+const WHITEBOARDS = [
+  { name: 'Pizarra de reuniones', x: 5, y: 1, width: 4, height: 2 },
+  { name: 'Pizarra de la oficina', x: 9, y: 9, width: 4, height: 2 },
+];
+for (const b of WHITEBOARDS)
+  for (let y = b.y; y < b.y + b.height; y++)
+    for (let x = b.x; x < b.x + b.width; x++)
+      if (!facesAt.has(idx(x, y)))
+        throw new Error(`La pizarra "${b.name}" no está sobre una pared`);
+
+const rectObjects = (rects, firstId, type) =>
+  rects.map((r, i) => ({
+    id: firstId + i,
+    name: r.name,
+    type,
+    x: r.x * T,
+    y: r.y * T,
+    width: r.width * T,
+    height: r.height * T,
+    rotation: 0,
+    visible: true,
+  }));
+const objectLayer = (id, name, objects, extra = {}) => ({
+  id,
+  name,
+  type: 'objectgroup',
+  x: 0,
+  y: 0,
+  opacity: 1,
+  visible: true,
+  draworder: 'topdown',
+  objects,
+  ...extra,
+});
+
 const map = {
   type: 'map',
   version: '1.10',
@@ -231,8 +267,8 @@ const map = {
   height: H,
   tilewidth: T,
   tileheight: T,
-  nextlayerid: 8,
-  nextobjectid: 2 + ZONES.length,
+  nextlayerid: 9,
+  nextobjectid: 2 + ZONES.length + WHITEBOARDS.length,
   layers: [
     tileLayer(1, 'floor', floor),
     tileLayer(2, 'walls', walls),
@@ -269,27 +305,9 @@ const map = {
         },
       ],
     },
-    {
-      id: 7,
-      name: 'zones',
-      type: 'objectgroup',
-      x: 0,
-      y: 0,
-      opacity: 0.4,
-      visible: false,
-      draworder: 'topdown',
-      objects: ZONES.map((z, i) => ({
-        id: 2 + i,
-        name: z.name,
-        type: 'private',
-        x: z.x * T,
-        y: z.y * T,
-        width: z.width * T,
-        height: z.height * T,
-        rotation: 0,
-        visible: true,
-      })),
-    },
+    objectLayer(7, 'zones', rectObjects(ZONES, 2, 'private'), { opacity: 0.4, visible: false }),
+    // Pizarras: el juego las dibuja (el pack de Kenney no trae ninguna).
+    objectLayer(8, 'whiteboards', rectObjects(WHITEBOARDS, 2 + ZONES.length, 'whiteboard')),
   ],
   tilesets: [
     {
