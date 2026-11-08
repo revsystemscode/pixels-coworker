@@ -51,11 +51,16 @@ export const JOIN_TICKET_TTL_MS = 60_000;
 export const WHITEBOARD_REACH = 2;
 /** Máximo de elementos por pizarra (contando los borrados que aún se guardan). */
 export const WHITEBOARD_MAX_ELEMENTS = 3000;
-/** Tamaño máximo de una pizarra (JSON) y de un elemento. */
+/** Tamaño máximo de una pizarra (JSON) y de un elemento (un trazo largo a mano ronda 50 KB). */
 export const WHITEBOARD_MAX_BYTES = 2_000_000;
-export const WHITEBOARD_MAX_ELEMENT_BYTES = 100_000;
-/** Tamaño máximo de un mensaje de cambios (el cliente parte los más grandes). */
-export const WHITEBOARD_MAX_UPDATE_BYTES = 200_000;
+export const WHITEBOARD_MAX_ELEMENT_BYTES = 60_000;
+/**
+ * Tamaño (JSON) de cada trozo de cambios que envía el cliente: los más grandes se parten. Cabe con
+ * margen en GAME_MAX_MESSAGE_BYTES aunque msgpack ocupe más que el JSON (números con decimales).
+ */
+export const WHITEBOARD_MAX_UPDATE_BYTES = 64_000;
+/** Tamaño máximo de un mensaje del cliente al servidor de juego (por defecto Colyseus deja 4 KB). */
+export const GAME_MAX_MESSAGE_BYTES = 256 * 1024;
 /** Cada cuánto envía el cliente sus cambios y su puntero mientras dibuja. */
 export const WHITEBOARD_SEND_INTERVAL_MS = 100;
 /** Tras el último cambio, el servidor espera esto antes de guardar la pizarra. */

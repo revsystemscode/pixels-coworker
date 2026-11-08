@@ -1,5 +1,5 @@
 import type { Db } from '@pixels/db';
-import { isDirection, type Direction, type TiledMap } from '@pixels/shared';
+import { isDirection, type BoardElement, type Direction, type TiledMap } from '@pixels/shared';
 
 export interface SavedPosition {
   x: number;
@@ -14,6 +14,9 @@ export interface SpaceStore {
   loadPosition(spaceId: string, userId: string): Promise<SavedPosition | null>;
   /** Guarda la última posición. No hace nada si la persona ya no es miembro. */
   savePosition(spaceId: string, userId: string, position: SavedPosition): Promise<void>;
+  /** Elementos guardados de una pizarra ([] si aún no se ha dibujado nada). */
+  loadBoard(spaceId: string, boardId: string): Promise<unknown[]>;
+  saveBoard(spaceId: string, boardId: string, elements: BoardElement[]): Promise<void>;
 }
 
 export function createDbSpaceStore(db: Db): SpaceStore {
@@ -39,6 +42,21 @@ export function createDbSpaceStore(db: Db): SpaceStore {
         data: { lastX: x, lastY: y, lastDir: dir },
       });
     },
+    async loadBoard(spaceId, boardId) {
+      const board = await db.whiteboard.findUnique({
+        where: { spaceId_boardId: { spaceId, boardId } },
+        select: { elements: true },
+      });
+      return Array.isArray(board?.elements) ? board.elements : [];
+    },
+    async saveBoard(spaceId, boardId, elements) {
+      const data = elements as unknown as object[];
+      await db.whiteboard.upsert({
+        where: { spaceId_boardId: { spaceId, boardId } },
+        create: { spaceId, boardId, elements: data },
+        update: { elements: data },
+      });
+    },
   };
 }
 
@@ -46,6 +64,7 @@ export function createDbSpaceStore(db: Db): SpaceStore {
 export class MemorySpaceStore implements SpaceStore {
   readonly maps = new Map<string, TiledMap>();
   readonly positions = new Map<string, SavedPosition>();
+  readonly boards = new Map<string, BoardElement[]>();
 
   async loadMap(spaceId: string) {
     return this.maps.get(spaceId) ?? null;
@@ -55,5 +74,11 @@ export class MemorySpaceStore implements SpaceStore {
   }
   async savePosition(spaceId: string, userId: string, position: SavedPosition) {
     this.positions.set(`${spaceId}/${userId}`, position);
+  }
+  async loadBoard(spaceId: string, boardId: string): Promise<unknown[]> {
+    return structuredClone(this.boards.get(`${spaceId}/${boardId}`) ?? []);
+  }
+  async saveBoard(spaceId: string, boardId: string, elements: BoardElement[]) {
+    this.boards.set(`${spaceId}/${boardId}`, structuredClone(elements));
   }
 }

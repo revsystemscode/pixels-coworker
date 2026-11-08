@@ -39,3 +39,27 @@ export class ChatLimiter {
     return true;
   }
 }
+
+/** Cubo de créditos genérico: `ratePerSecond` de media y ráfagas de hasta `burst`. */
+export class TokenBucket {
+  private credits: number;
+  private last: number | null = null;
+
+  constructor(
+    private readonly ratePerSecond: number,
+    private readonly burst: number,
+  ) {
+    this.credits = burst;
+  }
+
+  tryConsume(now: number): boolean {
+    if (this.last !== null) {
+      const elapsed = Math.max(0, now - this.last);
+      this.credits = Math.min(this.burst, this.credits + (elapsed / 1000) * this.ratePerSecond);
+    }
+    this.last = now;
+    if (this.credits < 1) return false;
+    this.credits -= 1;
+    return true;
+  }
+}

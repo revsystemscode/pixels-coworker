@@ -6,13 +6,25 @@ import {
   MEDIA_TICKET_TTL_MS,
   SERVER_TICK_RATE,
   ServerMessage,
+  WHITEBOARD_REACH,
+  WHITEBOARD_SAVE_DELAY_MS,
   applyStep,
+  distanceToRect,
   isWalkable,
+  parseBoardOpen,
+  parseBoardPointer,
+  parseBoardUpdate,
   parseStep,
   parseWorldMap,
   sanitizeAvatar,
   sanitizeChat,
   sanitizeName,
+  type BoardElement,
+  type BoardErrorMessage,
+  type BoardRemotePointerMessage,
+  type BoardSceneMessage,
+  type BoardUpdateMessage,
+  type BoardViewersMessage,
   type ChatEntry,
   type MediaTicketMessage,
   type SpaceEvent,
@@ -20,13 +32,16 @@ import {
 } from '@pixels/shared';
 import { signMediaTicket, verifyJoinTicket, type JoinTicketPayload } from '@pixels/shared/tickets';
 import type { SavedPosition, SpaceStore } from '../store.js';
-import { ChatLimiter, StepLimiter } from './limits.js';
+import { BoardDocument } from './boards.js';
+import { ChatLimiter, StepLimiter, TokenBucket } from './limits.js';
 import { Player, WorldState } from './WorldState.js';
 
 interface ClientLimits {
   steps: StepLimiter;
   chat: ChatLimiter;
   lastTicketAt: number;
+  boardUpdates: TokenBucket;
+  boardPointer: TokenBucket;
 }
 
 /** Lo que la sala recibe del servidor (no del cliente). */
@@ -50,7 +65,7 @@ const roomsBySpace = new Map<string, WorldRoom>();
 export function handleSpaceEvent(event: SpaceEvent) {
   const room = roomsBySpace.get(event.spaceId);
   if (!room) return;
-  if (event.type === 'space-deleted') void room.disconnect(LeaveCode.Removed);
+  if (event.type === 'space-deleted') room.closeDeleted();
   else room.removeUser(event.userId);
 }
 
@@ -72,6 +87,12 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   private limits = new Map<string, ClientLimits>();
   private chatHistory: ChatEntry[] = [];
   private chatCounter = 0;
+  /** Pizarras cargadas (o cargándose), por id. */
+  private boards = new Map<string, Promise<BoardDocument>>();
+  /** Pizarra abierta por cada sesión. */
+  private openBoards = new Map<string, string>();
+  /** El espacio se ha borrado: ya no se guarda nada. */
+  private deleted = false;
 
   protected now() {
     return (this.deps.now ?? Date.now)();
@@ -100,6 +121,12 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     this.onMessage(ClientMessage.Step, (client, raw) => this.handleStep(client, raw));
     this.onMessage(ClientMessage.Chat, (client, raw) => this.handleChat(client, raw));
     this.onMessage(ClientMessage.MediaTicket, (client) => this.handleMediaTicket(client));
+    this.onMessage(ClientMessage.BoardOpen, (client, raw) => this.handleBoardOpen(client, raw));
+    this.onMessage(ClientMessage.BoardClose, (client) => this.closeBoard(client.sessionId));
+    this.onMessage(ClientMessage.BoardUpdate, (client, raw) => this.handleBoardUpdate(client, raw));
+    this.onMessage(ClientMessage.BoardPointer, (client, raw) =>
+      this.handleBoardPointer(client, raw),
+    );
   }
 
   override onAuth(_client: Client, options?: { ticket?: unknown }): JoinTicketPayload {
@@ -146,6 +173,9 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       steps: new StepLimiter(this.now()),
       chat: new ChatLimiter(),
       lastTicketAt: this.now(),
+      // Holgado: un pegado grande llega en varios trozos seguidos.
+      boardUpdates: new TokenBucket(20, 40),
+      boardPointer: new TokenBucket(15, 15),
     });
     client.send(ServerMessage.ChatHistory, this.chatHistory);
     this.sendMediaTicket(client);
@@ -165,8 +195,16 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     }
   }
 
-  override onDispose() {
+  override async onDispose() {
     if (roomsBySpace.get(this.spaceId) === this) roomsBySpace.delete(this.spaceId);
+    // Guarda lo que quede pendiente de las pizarras.
+    await Promise.all([...this.boards.keys()].map((id) => this.saveBoard(id)));
+  }
+
+  /** El espacio se ha borrado: saca a todos sin guardar nada más. */
+  closeDeleted() {
+    this.deleted = true;
+    void this.disconnect(LeaveCode.Removed);
   }
 
   /** Expulsa a una cuenta (ya no es miembro del espacio). */
@@ -177,6 +215,7 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   }
 
   private forget(sessionId: string) {
+    this.closeBoard(sessionId);
     this.state.players.delete(sessionId);
     this.limits.delete(sessionId);
     this.users.delete(sessionId);
@@ -205,7 +244,186 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     if (next) {
       player.x = next.x;
       player.y = next.y;
+      const boardId = this.openBoards.get(client.sessionId);
+      if (boardId && !this.isNearBoard(next, boardId)) {
+        this.closeBoard(client.sessionId);
+        this.sendBoardError(client, boardId, 'Te alejaste de la pizarra.', true);
+      }
     }
+  }
+
+  // --- Pizarras ---
+
+  private isNearBoard(p: { x: number; y: number }, boardId: string) {
+    const board = this.map.whiteboards.find((b) => b.id === boardId);
+    return !!board && distanceToRect(p, board) <= WHITEBOARD_REACH;
+  }
+
+  private loadBoard(boardId: string): Promise<BoardDocument> {
+    let doc = this.boards.get(boardId);
+    if (!doc) {
+      doc = this.deps.store
+        .loadBoard(this.spaceId, boardId)
+        .then((saved) => new BoardDocument(saved));
+      // Si falla, el siguiente intento vuelve a leer.
+      doc.catch(() => this.boards.delete(boardId));
+      this.boards.set(boardId, doc);
+    }
+    return doc;
+  }
+
+  private async handleBoardOpen(client: Client, raw: unknown) {
+    const msg = parseBoardOpen(raw);
+    const player = this.state.players.get(client.sessionId);
+    if (!msg || !player) return;
+    const { boardId } = msg;
+    if (!this.isNearBoard(player, boardId)) {
+      this.sendBoardError(client, boardId, 'Acércate a la pizarra para abrirla.', true);
+      return;
+    }
+    this.closeBoard(client.sessionId);
+    this.openBoards.set(client.sessionId, boardId);
+
+    let doc: BoardDocument;
+    try {
+      doc = await this.loadBoard(boardId);
+    } catch (err) {
+      this.deps.onError?.('No se pudo leer la pizarra', err);
+      if (this.openBoards.get(client.sessionId) === boardId) {
+        this.openBoards.delete(client.sessionId);
+        this.sendBoardError(client, boardId, 'No se pudo abrir la pizarra.', true);
+      }
+      return;
+    }
+    // Mientras cargaba pudo cerrarla, abrir otra o salir de la sala.
+    if (this.openBoards.get(client.sessionId) !== boardId) return;
+    doc.viewers.add(client.sessionId);
+    client.send(ServerMessage.BoardScene, {
+      boardId,
+      elements: doc.list(),
+    } satisfies BoardSceneMessage);
+    this.sendViewers(boardId, doc);
+  }
+
+  /** Cierra la pizarra que tenga abierta la sesión (si tiene alguna). */
+  private closeBoard(sessionId: string) {
+    const boardId = this.openBoards.get(sessionId);
+    if (!boardId) return;
+    this.openBoards.delete(sessionId);
+    void this.boards.get(boardId)?.then(
+      (doc) => {
+        if (!doc.viewers.delete(sessionId)) return;
+        this.sendViewers(boardId, doc);
+        // La última persona la ha cerrado: se guarda ya.
+        if (doc.viewers.size === 0) void this.saveBoard(boardId);
+      },
+      () => {},
+    );
+  }
+
+  /** El documento de la pizarra que la sesión tiene abierta (ya cargado), o null. */
+  private async openDoc(client: Client, boardId: string) {
+    if (this.openBoards.get(client.sessionId) !== boardId) return null;
+    const doc = await this.boards.get(boardId)?.catch(() => null);
+    return doc?.viewers.has(client.sessionId) ? doc : null;
+  }
+
+  private async handleBoardUpdate(client: Client, raw: unknown) {
+    const limits = this.limits.get(client.sessionId);
+    if (!limits?.boardUpdates.tryConsume(this.now())) return;
+    const msg = parseBoardUpdate(raw);
+    if (!msg) return;
+    const doc = await this.openDoc(client, msg.boardId);
+    if (!doc) return;
+
+    const { accepted, stale, full } = doc.apply(msg.elements);
+    if (accepted.length > 0) {
+      this.sendToViewers(
+        doc,
+        ServerMessage.BoardUpdate,
+        { boardId: msg.boardId, elements: accepted },
+        client.sessionId,
+      );
+      this.scheduleSave(msg.boardId, doc);
+    }
+    if (full) {
+      // Vuelve a sincronizar a quien no cupo: así ve lo que de verdad hay.
+      this.sendBoardError(
+        client,
+        msg.boardId,
+        'La pizarra está llena: borra algo para seguir dibujando.',
+        false,
+      );
+      client.send(ServerMessage.BoardScene, {
+        boardId: msg.boardId,
+        elements: doc.list(),
+      } satisfies BoardSceneMessage);
+    } else if (stale.length > 0) {
+      client.send(ServerMessage.BoardUpdate, {
+        boardId: msg.boardId,
+        elements: stale,
+      } satisfies BoardUpdateMessage);
+    }
+  }
+
+  private async handleBoardPointer(client: Client, raw: unknown) {
+    const limits = this.limits.get(client.sessionId);
+    if (!limits?.boardPointer.tryConsume(this.now())) return;
+    const msg = parseBoardPointer(raw);
+    if (!msg) return;
+    const doc = await this.openDoc(client, msg.boardId);
+    if (!doc) return;
+    this.sendToViewers(
+      doc,
+      ServerMessage.BoardPointer,
+      { ...msg, sessionId: client.sessionId } satisfies BoardRemotePointerMessage,
+      client.sessionId,
+    );
+  }
+
+  private sendToViewers(doc: BoardDocument, type: string, message: unknown, except?: string) {
+    for (const c of this.clients) {
+      if (c.sessionId !== except && doc.viewers.has(c.sessionId)) c.send(type, message);
+    }
+  }
+
+  private sendViewers(boardId: string, doc: BoardDocument) {
+    const viewers = [...doc.viewers].flatMap((sessionId) => {
+      const p = this.state.players.get(sessionId);
+      return p ? [{ sessionId, name: p.name, avatar: p.avatar }] : [];
+    });
+    this.sendToViewers(doc, ServerMessage.BoardViewers, {
+      boardId,
+      viewers,
+    } satisfies BoardViewersMessage);
+  }
+
+  private sendBoardError(client: Client, boardId: string, message: string, closed: boolean) {
+    client.send(ServerMessage.BoardError, { boardId, message, closed } satisfies BoardErrorMessage);
+  }
+
+  private scheduleSave(boardId: string, doc: BoardDocument) {
+    clearTimeout(doc.saveTimer);
+    doc.saveTimer = setTimeout(() => void this.saveBoard(boardId), WHITEBOARD_SAVE_DELAY_MS);
+  }
+
+  /** Guarda la pizarra si tiene cambios. Los guardados de una misma pizarra van en orden. */
+  private async saveBoard(boardId: string) {
+    const doc = await this.boards.get(boardId)?.catch(() => null);
+    if (!doc) return;
+    clearTimeout(doc.saveTimer);
+    doc.saving = doc.saving.then(async () => {
+      if (!doc.dirty || this.deleted) return;
+      doc.dirty = false;
+      const elements: BoardElement[] = doc.list();
+      try {
+        await this.deps.store.saveBoard(this.spaceId, boardId, elements);
+      } catch (err) {
+        doc.dirty = true;
+        this.deps.onError?.('No se pudo guardar la pizarra', err);
+      }
+    });
+    await doc.saving;
   }
 
   private handleMediaTicket(client: Client) {
