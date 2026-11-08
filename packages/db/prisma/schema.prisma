@@ -121,6 +121,7 @@ model Space {
 
   memberships Membership[]
   invites     Invite[]
+  whiteboards Whiteboard[]
 
   @@index([mapId])
   @@map("spaces")
@@ -168,4 +169,21 @@ model Invite {
   @@index([spaceId])
   @@index([createdById])
   @@map("invites")
+}
+
+/**
+ * Contenido de una pizarra del mapa de un espacio: la lista de elementos de Excalidraw.
+ */
+model Whiteboard {
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  /**
+   * Id de la pizarra en el mapa (capa "whiteboards" de Tiled), por ejemplo "board-4".
+   */
+  boardId   String
+  elements  Json
+  updatedAt DateTime @updatedAt
+
+  @@id([spaceId, boardId])
+  @@map("whiteboards")
 }
