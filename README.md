@@ -2,7 +2,7 @@
 
 Plataforma web de reuniones en un mundo 2D (vista cenital, pixel art) con video y audio por proximidad.
 
-Estado: **Fase 3 · Cuentas y espacios**. Ver [`docs/decisiones.md`](./docs/decisiones.md).
+Estado: **MVP completo** (fases 0–3 y pizarra). Ver [`docs/decisiones.md`](./docs/decisiones.md).
 
 ## Requisitos
 
@@ -34,6 +34,24 @@ las migraciones de la base de datos y después arranca en paralelo:
 Sin Docker puedes arrancar solo las apps con `pnpm dev:apps` (los servicios aparecerán como `down`).
 
 ## Cómo probar
+
+### Pizarra colaborativa
+
+1. `pnpm dev`. Entra con dos cuentas al mismo espacio (ver Fase 3).
+2. Camina hasta una pizarra: hay una en la pared de la oficina abierta y otra en la sala de reuniones.
+   Cuando estás a 2 casillas o menos se resalta en amarillo y aparece **Abrir «Pizarra…»**. Se abre con
+   ese botón, con la tecla **E** o haciendo clic en la pizarra (si está lejos, el avatar camina hasta
+   ella).
+3. Dibuja con las dos cuentas: lo de cada una le aparece a la otra al momento, con su puntero y su
+   nombre. Arriba se ve quién tiene la pizarra abierta y se puede silenciar el micrófono.
+4. **Cerrar pizarra**, sal del espacio y vuelve: lo dibujado sigue ahí.
+
+Todos los miembros dibujan, también los invitados. No se pueden pegar imágenes (necesitan un almacén
+de archivos; llegará más adelante). Límites por pizarra: 3000 elementos y 2 MB.
+
+```bash
+pnpm --filter @pixels/web e2e whiteboard
+```
 
 ### Fase 3 · Cuentas y espacios
 
@@ -146,16 +164,18 @@ integrada (Intel UHD 630): 60 FPS estables con 50 bots.
 apps/
   web/            React 18 + Vite + Phaser 3 (src/pages: login, espacios, perfil, invitación;
                   src/game: escena, avatares, predicción; src/media: LiveKit y proximidad;
+                  src/whiteboard: pizarra (Excalidraw, se descarga al abrirla);
                   src/ui: burbujas, controles y ajustes del espacio)
     public/assets/  tilesets y personajes (Kenney, CC0)
     e2e/            pruebas E2E con Playwright
   game-server/    Colyseus: una sala por espacio, autoridad del movimiento y el chat, última posición
+                  y pizarras (reparte los cambios y los guarda)
     scripts/bots.ts bots para pruebas de carga
   api/            Fastify: login (Better Auth), /me, espacios, miembros, invitaciones, tickets para
                   entrar a un espacio y tokens de LiveKit
 packages/
   db/             Prisma 7 + PostgreSQL: esquema (prisma/schema.prisma) y migraciones
-  shared/         tipos, protocolo, roles, mapa, zonas, proximidad, colisiones y caminos
+  shared/         tipos, protocolo, roles, mapa, zonas, pizarras, proximidad, colisiones y caminos
                   tickets: firma de tickets entre servidores (solo servidores)
     src/maps/       mapas en formato Tiled JSON (plantillas)
 tools/            scripts para preparar assets y generar el mapa inicial
@@ -165,7 +185,7 @@ docker-compose.yml   Postgres, Redis, Mailpit y LiveKit para desarrollo local
 ## Base de datos
 
 El esquema está en `packages/db/prisma/schema.prisma` (usuarios y sesiones, espacios, mapas, miembros
-con su rol y su última posición, e invitaciones). Tras cambiarlo:
+con su rol y su última posición, invitaciones y el contenido de las pizarras). Tras cambiarlo:
 
 ```bash
 pnpm --filter @pixels/db migrate:dev --name <cambio>   # crea y aplica la migración
@@ -187,10 +207,14 @@ y el servidor (para validar colisiones). Se pueden abrir y editar con
 - Capa de objetos `spawn` con un punto llamado `spawn`: donde aparecen los jugadores.
 - Capa de objetos `zones` (opcional): cada **rectángulo** es una zona privada. Su nombre es el que se
   muestra al entrar («Sala de reuniones · privada»). Se ajusta a casillas completas.
+- Capa de objetos `whiteboards` (opcional): cada **rectángulo** es una pizarra (el juego la dibuja;
+  normalmente va sobre una pared). Su nombre es el que se ve al abrirla. Lo dibujado se guarda con el
+  id del objeto en Tiled: si se mueve la pizarra en el mapa, el contenido la sigue.
 
 `office.json` se generó con `node tools/build-office-map.mjs`. Si lo editas en Tiled, no vuelvas a
 ejecutar ese script (sobrescribiría tus cambios). Los cambios en la plantilla solo afectan a los
-espacios nuevos: los que ya existen tienen su propia copia.
+espacios nuevos: los que ya existen tienen su propia copia (para las pizarras, una migración se la
+añadió a los espacios ya creados con la oficina).
 
 `@pixels/shared` se consume desde el código fuente en desarrollo (condición de exportación `source`), así
 que no hace falta compilarlo para `pnpm dev`, `pnpm test` ni `pnpm typecheck`. `pnpm build` lo compila a
@@ -226,3 +250,5 @@ request.
 
 - TypeScript está fijado en `~6.0` porque `typescript-eslint` todavía no soporta TypeScript 7.
 - Phaser se mantiene en la rama 3.x (la que pide el plan), aunque ya existe Phaser 4.
+- Excalidraw 0.18. Sus fuentes se sirven desde la propia web (`/excalidraw/fonts`, ver
+  `apps/web/vite.config.ts`), salvo la de chino, japonés y coreano (12 MB), que se pide a su CDN.

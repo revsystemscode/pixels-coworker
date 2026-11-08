@@ -2,6 +2,35 @@
 
 Registro breve de decisiones de producto y de arquitectura. Lo más reciente, arriba.
 
+## Pizarra (cierre del MVP)
+
+| Tema           | Decisión                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| Librería       | **Excalidraw** (MIT, en español). tldraw se descartó: en producción pide una licencia de pago  |
+| Dónde está     | Objetos del mapa (capa `whiteboards` de Tiled). La oficina trae dos: reuniones y oficina       |
+| Cómo se abre   | A 2 casillas o menos: botón «Abrir», tecla E o clic en la pizarra (camina hasta ella)          |
+| Quién dibuja   | Todos los miembros, también los invitados                                                      |
+| Sincronización | Por la sala de Colyseus del espacio. Sin servicios nuevos                                      |
+| Guardado       | Postgres (tabla `whiteboards`), 2 s después del último cambio y al cerrarla la última persona  |
+| Límites        | 3000 elementos y 2 MB por pizarra, 60 KB por elemento. Sin imágenes ni contenido incrustado    |
+| Carga          | Excalidraw solo se descarga al abrir la primera pizarra (~1 MB comprimido); el mapa no lo paga |
+
+- **Cómo se combinan los cambios.** Cada elemento lleva `version` y `versionNonce`. Si dos personas
+  cambian el mismo elemento, gana la versión más alta y, si empatan, el `versionNonce` más bajo: la
+  misma regla que `reconcileElements` de Excalidraw, así el servidor y los navegadores llegan al mismo
+  resultado. A quien envía algo atrasado, el servidor le devuelve la versión buena.
+- **El servidor no se fía del navegador**: comprueba que estás cerca para abrir la pizarra (y la
+  cierra si te alejas), que la tienes abierta para enviar cambios, la forma y el tamaño de cada
+  elemento, y quita enlaces que no sean http(s) o mailto (un `javascript:` se ejecutaría al hacer clic
+  en la pizarra de otra persona). Si la pizarra se llena, avisa y vuelve a sincronizar a quien no cupo.
+  Borrar siempre se puede.
+- **Borrados**: se envían como elementos con `isDeleted` (así llegan a todos). Al volver a cargar una
+  pizarra que nadie tenía abierta se descartan, para que no ocupen sitio para siempre.
+- **Tamaño de los mensajes**: Colyseus solo acepta 4 KB por mensaje del cliente por defecto; se sube a
+  256 KB (un trazo largo a mano ronda los 50 KB) y el cliente parte los cambios grandes en trozos.
+- Los espacios creados antes de la pizarra la reciben con una migración (solo los de la plantilla de
+  oficina).
+
 ## Cuentas y espacios (Fase 3)
 
 | Tema               | Decisión                                                                                        |
@@ -76,10 +105,10 @@ Registro breve de decisiones de producto y de arquitectura. Lo más reciente, ar
 | Movimiento                 | Por casillas de 16 px, 4 direcciones, 160 ms por casilla                                 |
 | API                        | Fastify                                                                                  |
 | MVP (fases 0–3) incluye    | Video por proximidad, compartir pantalla, zonas privadas, login con Google y **pizarra** |
-| Pendiente                  | Hosting y presupuesto (antes de la Fase 6), dominio, proveedor de correo. Pizarra        |
+| Pendiente                  | Hosting y presupuesto (antes de la Fase 6), dominio, proveedor de correo                 |
 
 La **pizarra colaborativa** estaba en la Fase 4 del plan original; el equipo la pidió en el MVP, así que
-se adelanta. Habrá que decidir en qué fase entra (propuesta: al final de la Fase 3).
+se adelantó y se hizo justo después de la Fase 3 (ver «Pizarra»).
 
 ## Arquitectura del movimiento (Fase 1)
 

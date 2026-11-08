@@ -17,12 +17,18 @@ dibujo). Créditos: gráficos de [Kenney](https://www.kenney.nl).
 
 ## Dependencias de código relevantes
 
-| Proyecto                        | Uso               | Licencia   |
-| ------------------------------- | ----------------- | ---------- |
-| Phaser 3                        | Motor 2D          | MIT        |
-| Colyseus                        | Servidor de juego | MIT        |
-| LiveKit server / livekit-client | Video y audio     | Apache-2.0 |
-| React                           | Interfaz          | MIT        |
-| Fastify                         | API               | MIT        |
-| Zustand                         | Estado de la UI   | MIT        |
-| Playwright                      | Pruebas E2E       | Apache-2.0 |
+| Proyecto                        | Uso               | Licencia                    |
+| ------------------------------- | ----------------- | --------------------------- |
+| Phaser 3                        | Motor 2D          | MIT                         |
+| Colyseus                        | Servidor de juego | MIT                         |
+| LiveKit server / livekit-client | Video y audio     | Apache-2.0                  |
+| React                           | Interfaz          | MIT                         |
+| Fastify                         | API               | MIT                         |
+| Zustand                         | Estado de la UI   | MIT                         |
+| Excalidraw                      | Pizarra           | MIT                         |
+| Fuentes de Excalidraw           | Pizarra           | OFL 1.1 (Comic Shanns: MIT) |
+| Playwright                      | Pruebas E2E       | Apache-2.0                  |
+
+Las fuentes de Excalidraw no están en el repositorio: se copian del paquete `@excalidraw/excalidraw` al
+compilar la web (Excalifont, Virgil, Nunito, Lilita One, Comic Shanns, Cascadia Code, Liberation Sans y
+Assistant).
