@@ -2,6 +2,9 @@ import type { Room } from '@colyseus/sdk';
 import { useApp } from '../store.js';
 import { GameCanvas } from '../game/GameCanvas.js';
 import { ChatPanel } from './ChatPanel.js';
+import { MediaControls } from './MediaControls.js';
+import { ScreenShares } from './ScreenShares.js';
+import { ZoneBadge } from './ZoneBadge.js';
 
 export function WorldScreen({ room }: { room: Room }) {
   const leave = useApp((s) => s.leave);
@@ -14,7 +17,10 @@ export function WorldScreen({ room }: { room: Room }) {
         <button type="button" className="secondary" onClick={() => void leave()}>
           Salir
         </button>
+        <ZoneBadge />
       </header>
+      <ScreenShares />
+      <MediaControls />
       <p className="hint">Muévete con las flechas, WASD o haciendo clic en el mapa.</p>
       <ChatPanel selfId={room.sessionId} />
     </div>
