@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LocalAudioTrack, LocalVideoTrack, RemoteVideoTrack } from 'livekit-client';
+import type { LocalAudioTrack, LocalVideoTrack, Track } from 'livekit-client';
 import { loadPrefs, savePrefs, type MediaPrefs } from './prefs.js';
 
 /** Lo que mostramos de cada persona cercana (a la que estamos suscritos). */
@@ -8,8 +8,8 @@ export interface PeerMedia {
   name: string;
   /** 0–1 según la distancia. */
   volume: number;
-  camera: RemoteVideoTrack | null;
-  screen: RemoteVideoTrack | null;
+  camera: Track | null;
+  screen: Track | null;
   micMuted: boolean;
   speaking: boolean;
 }
@@ -28,6 +28,8 @@ interface MediaState {
   cameraOn: boolean;
   screenOn: boolean;
   selfSpeaking: boolean;
+  /** El navegador bloqueó la reproducción de audio: hace falta un clic. */
+  audioBlocked: boolean;
   localCamera: LocalVideoTrack | null;
   localScreen: LocalVideoTrack | null;
   peers: Record<string, PeerMedia>;
@@ -50,6 +52,7 @@ export const useMedia = create<MediaState>((set, get) => ({
   cameraOn: false,
   screenOn: false,
   selfSpeaking: false,
+  audioBlocked: false,
   localCamera: null,
   localScreen: null,
   peers: {},

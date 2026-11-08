@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import type { Room } from '@colyseus/sdk';
+import type { MediaSession } from '../media/MediaSession.js';
+import { useApp } from '../store.js';
 import { WorldScene } from './WorldScene.js';
 
 declare global {
@@ -8,6 +10,7 @@ declare global {
     /** Solo en desarrollo: estado del juego para pruebas E2E y depuración. */
     __pixels?: {
       snapshot: () => ReturnType<WorldScene['debugSnapshot']> | null;
+      media: () => ReturnType<MediaSession['debugSnapshot']> | null;
       game: Phaser.Game;
     };
   }
@@ -34,7 +37,11 @@ export function GameCanvas({ room }: { room: Room }) {
     const scene = () => game.scene.getScene<WorldScene>('world') ?? null;
     let fpsTimer: number | undefined;
     if (import.meta.env.DEV) {
-      window.__pixels = { snapshot: () => scene()?.debugSnapshot() ?? null, game };
+      window.__pixels = {
+        snapshot: () => scene()?.debugSnapshot() ?? null,
+        media: () => useApp.getState().media?.debugSnapshot() ?? null,
+        game,
+      };
       fpsTimer = window.setInterval(() => setFps(Math.round(game.loop.actualFps)), 500);
     }
 

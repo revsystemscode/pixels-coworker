@@ -2,13 +2,19 @@ import type { Room } from '@colyseus/sdk';
 import { create } from 'zustand';
 import {
   ClientMessage,
+  DEFAULT_MAP,
+  MAPS,
   ServerMessage,
   WORLD_ROOM,
+  parseWorldMap,
   type ChatEntry,
   type JoinOptions,
+  type MediaTicketMessage,
 } from '@pixels/shared';
 import { Client } from '@colyseus/sdk';
 import { env } from './env.js';
+import { MediaSession } from './media/MediaSession.js';
+import { useMedia } from './media/store.js';
 
 const MAX_MESSAGES = 200;
 
@@ -18,6 +24,7 @@ interface AppState {
   phase: Phase;
   error: string | null;
   room: Room | null;
+  media: MediaSession | null;
   messages: ChatEntry[];
   join: (options: JoinOptions) => Promise<void>;
   leave: () => Promise<void>;
@@ -28,12 +35,17 @@ export const useApp = create<AppState>((set, get) => ({
   phase: 'join',
   error: null,
   room: null,
+  media: null,
   messages: [],
 
   join: async (options) => {
     set({ phase: 'connecting', error: null, messages: [] });
     try {
       const room = await new Client(env.gameServerWsUrl).joinOrCreate(WORLD_ROOM, options);
+      // El servidor envía el ticket de medios nada más entrar.
+      const ticket = new Promise<string>((resolve) =>
+        room.onMessage(ServerMessage.MediaTicket, (m: MediaTicketMessage) => resolve(m.ticket)),
+      );
       room.onMessage(ServerMessage.ChatHistory, (history: ChatEntry[]) =>
         set({ messages: history }),
       );
@@ -41,19 +53,23 @@ export const useApp = create<AppState>((set, get) => ({
         set((s) => ({ messages: [...s.messages, entry].slice(-MAX_MESSAGES) })),
       );
       room.onLeave(() => {
-        if (get().room === room)
-          set({ phase: 'join', room: null, error: 'Se perdió la conexión.' });
+        if (get().room !== room) return;
+        void get().media?.stop();
+        set({ phase: 'join', room: null, media: null, error: 'Se perdió la conexión.' });
       });
-      set({ phase: 'world', room });
+
+      const media = new MediaSession(room, parseWorldMap(MAPS[DEFAULT_MAP]), ticket);
+      set({ phase: 'world', room, media });
+      void media.start(useMedia.getState().takePreview());
     } catch {
       set({ phase: 'join', error: 'No se pudo conectar con el servidor de juego.' });
     }
   },
 
   leave: async () => {
-    const { room } = get();
-    set({ phase: 'join', room: null, error: null });
-    await room?.leave();
+    const { room, media } = get();
+    set({ phase: 'join', room: null, media: null, error: null });
+    await Promise.all([media?.stop(), room?.leave()]);
   },
 
   sendChat: (text) => {
