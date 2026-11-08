@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { AVATAR_COUNT, NAME_MAX_LENGTH } from '@pixels/shared';
 import { useApp } from '../store.js';
 import { AvatarPreview } from './AvatarPreview.js';
+import { MediaSetup } from './MediaSetup.js';
 import { StatusPanel } from './StatusPanel.js';
 
 const STORAGE_KEY = 'pixels.profile';
@@ -51,6 +52,8 @@ export function JoinScreen() {
       <form className="panel join-card" onSubmit={onSubmit}>
         <h1>pixels-coworker</h1>
         <p className="subtitle">Elige tu nombre y tu avatar para entrar a la oficina.</p>
+
+        <MediaSetup />
 
         <label className="field">
           <span>Nombre</span>

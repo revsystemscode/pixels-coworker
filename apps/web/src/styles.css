@@ -328,3 +328,117 @@ button:focus-visible {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* --- Cámara y micrófono --- */
+
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+video.mirror {
+  transform: scaleX(-1);
+}
+
+.media-setup {
+  display: grid;
+  gap: 12px;
+}
+
+.preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+}
+
+.preview video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preview-off {
+  color: var(--muted);
+}
+
+.preview-toggles {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--panel-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.icon-button.off {
+  background: var(--down);
+  border-color: var(--down);
+  color: #fff;
+}
+
+.icon-button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.mic-level {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 10px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.15);
+  overflow: hidden;
+}
+
+.mic-level span {
+  display: block;
+  height: 100%;
+  background: var(--up);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+.device-selects {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .device-selects {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
