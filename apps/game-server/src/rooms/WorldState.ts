@@ -11,6 +11,8 @@ export const Player = schema(
     dir: t.string<Direction>().default('down'),
     /** Último paso procesado (aceptado o no). El cliente lo usa para reconciliar su predicción. */
     seq: t.uint32(),
+    /** Mano levantada (hasta que la baje). */
+    hand: t.boolean().default(false),
   },
   'Player',
 );

@@ -4,13 +4,14 @@ import { useMedia } from '../media/store.js';
 import { useApp } from '../store.js';
 import { CameraIcon, MicIcon, ScreenIcon, SettingsIcon } from './icons.js';
 import { DeviceSelect } from './MediaSetup.js';
+import { ReactionControls } from './ReactionControls.js';
 
 const canShareScreen =
   typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
 const canPickSpeaker =
   typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype;
 
-/** Barra inferior: micrófono, cámara, compartir pantalla y dispositivos. */
+/** Barra inferior: micrófono, cámara, compartir pantalla, dispositivos y reacciones. */
 export function MediaControls() {
   const media = useApp((s) => s.media);
   const status = useMedia((s) => s.status);
@@ -64,53 +65,56 @@ export function MediaControls() {
 
       {settingsOpen && media && <DeviceSettings onClose={() => setSettingsOpen(false)} />}
 
-      <div className="media-controls" role="toolbar" aria-label="Controles de video">
-        <button
-          type="button"
-          className={`icon-button${micOn ? '' : ' off'}`}
-          aria-pressed={micOn}
-          aria-label={micOn ? 'Silenciar micrófono' : 'Activar micrófono'}
-          title={micOn ? 'Silenciar micrófono' : 'Activar micrófono'}
-          disabled={!ready}
-          onClick={() => act(() => media!.setMicrophone(!micOn))}
-        >
-          <MicIcon off={!micOn} />
-        </button>
-        <button
-          type="button"
-          className={`icon-button${cameraOn ? '' : ' off'}`}
-          aria-pressed={cameraOn}
-          aria-label={cameraOn ? 'Apagar cámara' : 'Encender cámara'}
-          title={cameraOn ? 'Apagar cámara' : 'Encender cámara'}
-          disabled={!ready}
-          onClick={() => act(() => media!.setCamera(!cameraOn))}
-        >
-          <CameraIcon off={!cameraOn} />
-        </button>
-        {canShareScreen && (
+      <div className="toolbar-row">
+        <div className="media-controls" role="toolbar" aria-label="Controles de video">
           <button
             type="button"
-            className={`icon-button${screenOn ? ' active' : ''}`}
-            aria-pressed={screenOn}
-            aria-label={screenOn ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
-            title={screenOn ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
+            className={`icon-button${micOn ? '' : ' off'}`}
+            aria-pressed={micOn}
+            aria-label={micOn ? 'Silenciar micrófono' : 'Activar micrófono'}
+            title={micOn ? 'Silenciar micrófono' : 'Activar micrófono'}
             disabled={!ready}
-            onClick={() => act(() => media!.setScreenShare(!screenOn))}
+            onClick={() => act(() => media!.setMicrophone(!micOn))}
           >
-            <ScreenIcon />
+            <MicIcon off={!micOn} />
           </button>
-        )}
-        <button
-          type="button"
-          className={`icon-button${settingsOpen ? ' active' : ''}`}
-          aria-expanded={settingsOpen}
-          aria-label="Elegir dispositivos"
-          title="Elegir dispositivos"
-          disabled={status !== 'connected'}
-          onClick={() => setSettingsOpen((o) => !o)}
-        >
-          <SettingsIcon />
-        </button>
+          <button
+            type="button"
+            className={`icon-button${cameraOn ? '' : ' off'}`}
+            aria-pressed={cameraOn}
+            aria-label={cameraOn ? 'Apagar cámara' : 'Encender cámara'}
+            title={cameraOn ? 'Apagar cámara' : 'Encender cámara'}
+            disabled={!ready}
+            onClick={() => act(() => media!.setCamera(!cameraOn))}
+          >
+            <CameraIcon off={!cameraOn} />
+          </button>
+          {canShareScreen && (
+            <button
+              type="button"
+              className={`icon-button${screenOn ? ' active' : ''}`}
+              aria-pressed={screenOn}
+              aria-label={screenOn ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
+              title={screenOn ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
+              disabled={!ready}
+              onClick={() => act(() => media!.setScreenShare(!screenOn))}
+            >
+              <ScreenIcon />
+            </button>
+          )}
+          <button
+            type="button"
+            className={`icon-button${settingsOpen ? ' active' : ''}`}
+            aria-expanded={settingsOpen}
+            aria-label="Elegir dispositivos"
+            title="Elegir dispositivos"
+            disabled={status !== 'connected'}
+            onClick={() => setSettingsOpen((o) => !o)}
+          >
+            <SettingsIcon />
+          </button>
+        </div>
+        <ReactionControls />
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import {
   type ChatEntry,
   type GameServerHealth,
   type MediaTicketMessage,
+  type RemoteEmoteMessage,
   type Role,
 } from '@pixels/shared';
 import { signJoinTicket, verifyMediaTicket } from '@pixels/shared/tickets';
@@ -54,6 +55,7 @@ interface PlayerView {
   y: number;
   dir: string;
   seq: number;
+  hand: boolean;
 }
 
 interface TicketFields {
@@ -197,6 +199,29 @@ describe('servidor de juego', () => {
       `hola ${CHAT_RATE_LIMIT - 2}`,
       `hola ${CHAT_RATE_LIMIT - 1}`,
     ]);
+  });
+
+  it('reparte las reacciones a todos, descarta las desconocidas y limita la frecuencia', async () => {
+    const alice = await join('Alice');
+    const bob = await join('Bob');
+    const received: RemoteEmoteMessage[] = [];
+    bob.onMessage(ServerMessage.Emote, (m: RemoteEmoteMessage) => received.push(m));
+
+    alice.send(ClientMessage.Emote, { emote: 'nope' });
+    // El reloj no avanza: solo pasan las de la ráfaga (4).
+    for (let i = 0; i < 6; i++) alice.send(ClientMessage.Emote, { emote: 'wave' });
+    await expect.poll(() => received.length).toBe(4);
+    expect(received[0]).toEqual({ sessionId: alice.sessionId, emote: 'wave' });
+  });
+
+  it('la mano levantada queda en el estado y la ven quienes llegan después', async () => {
+    const alice = await join('Alice');
+    alice.send(ClientMessage.Hand, { raised: true });
+    await expect.poll(() => playerOf(alice)?.hand).toBe(true);
+    const bob = await join('Bob');
+    await expect.poll(() => playerOf(bob, alice.sessionId)?.hand).toBe(true);
+    alice.send(ClientMessage.Hand, { raised: false });
+    await expect.poll(() => playerOf(bob, alice.sessionId)?.hand).toBe(false);
   });
 
   it('entrega un ticket de medios firmado con la identidad del jugador y limita los repetidos', async () => {

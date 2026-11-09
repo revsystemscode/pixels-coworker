@@ -1,6 +1,7 @@
 export * from './api.js';
 export * from './constants.js';
 export * from './direction.js';
+export * from './emotes.js';
 export * from './health.js';
 export * from './map.js';
 export * from './maps/index.js';

@@ -35,6 +35,19 @@ Sin Docker puedes arrancar solo las apps con `pnpm dev:apps` (los servicios apar
 
 ## Cómo probar
 
+### Fase 4 · Reacciones y mano levantada
+
+1. `pnpm dev`. Entra con dos cuentas al mismo espacio.
+2. Pulsa el botón de la cara (abajo, a la derecha de los controles de video) y elige una reacción, o
+   usa las teclas **1–6** (👋 👍 ❤️ 😂 🎉 😮). Se ve 3 segundos sobre tu avatar y, si alguien está
+   cerca, también en tu burbuja de video.
+3. **✋** (o la tecla **H**) levanta la mano: queda junto a tu nombre y en tu burbuja hasta que la
+   bajes. Quien entra después también la ve.
+
+```bash
+pnpm --filter @pixels/web e2e reactions
+```
+
 ### Pizarra colaborativa
 
 1. `pnpm dev`. Entra con dos cuentas al mismo espacio (ver Fase 3).

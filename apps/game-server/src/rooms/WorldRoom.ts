@@ -14,6 +14,8 @@ import {
   parseBoardOpen,
   parseBoardPointer,
   parseBoardUpdate,
+  parseEmote,
+  parseHand,
   parseStep,
   parseWorldMap,
   sanitizeAvatar,
@@ -27,6 +29,7 @@ import {
   type BoardViewersMessage,
   type ChatEntry,
   type MediaTicketMessage,
+  type RemoteEmoteMessage,
   type SpaceEvent,
   type WorldMap,
 } from '@pixels/shared';
@@ -42,6 +45,7 @@ interface ClientLimits {
   lastTicketAt: number;
   boardUpdates: TokenBucket;
   boardPointer: TokenBucket;
+  emotes: TokenBucket;
 }
 
 /** Lo que la sala recibe del servidor (no del cliente). */
@@ -121,6 +125,8 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     this.onMessage(ClientMessage.Step, (client, raw) => this.handleStep(client, raw));
     this.onMessage(ClientMessage.Chat, (client, raw) => this.handleChat(client, raw));
     this.onMessage(ClientMessage.MediaTicket, (client) => this.handleMediaTicket(client));
+    this.onMessage(ClientMessage.Emote, (client, raw) => this.handleEmote(client, raw));
+    this.onMessage(ClientMessage.Hand, (client, raw) => this.handleHand(client, raw));
     this.onMessage(ClientMessage.BoardOpen, (client, raw) => this.handleBoardOpen(client, raw));
     this.onMessage(ClientMessage.BoardClose, (client) => this.closeBoard(client.sessionId));
     this.onMessage(ClientMessage.BoardUpdate, (client, raw) => this.handleBoardUpdate(client, raw));
@@ -176,6 +182,8 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       // Holgado: un pegado grande llega en varios trozos seguidos.
       boardUpdates: new TokenBucket(20, 40),
       boardPointer: new TokenBucket(15, 15),
+      // Reacciones y mano: unas cuantas seguidas, pero no una lluvia.
+      emotes: new TokenBucket(1, 4),
     });
     client.send(ServerMessage.ChatHistory, this.chatHistory);
     this.sendMediaTicket(client);
@@ -446,6 +454,28 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       this.deps.ticketSecret,
     );
     client.send(ServerMessage.MediaTicket, { ticket } satisfies MediaTicketMessage);
+  }
+
+  // --- Reacciones ---
+
+  private handleEmote(client: Client, raw: unknown) {
+    const msg = parseEmote(raw);
+    const limits = this.limits.get(client.sessionId);
+    if (!msg || !this.state.players.has(client.sessionId)) return;
+    if (!limits?.emotes.tryConsume(this.now())) return;
+    this.broadcast(ServerMessage.Emote, {
+      sessionId: client.sessionId,
+      emote: msg.emote,
+    } satisfies RemoteEmoteMessage);
+  }
+
+  private handleHand(client: Client, raw: unknown) {
+    const msg = parseHand(raw);
+    const player = this.state.players.get(client.sessionId);
+    const limits = this.limits.get(client.sessionId);
+    if (!msg || !player || player.hand === msg.raised) return;
+    if (!limits?.emotes.tryConsume(this.now())) return;
+    player.hand = msg.raised;
   }
 
   private handleChat(client: Client, raw: unknown) {

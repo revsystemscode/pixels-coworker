@@ -769,6 +769,41 @@ video.mirror {
   color: var(--down);
 }
 
+.bubble-emote {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 1.6rem;
+  line-height: 1;
+  animation: emote-pop 3s ease-out forwards;
+}
+
+@keyframes emote-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  8% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  15%,
+  75% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-emote {
+    animation: none;
+  }
+}
+
 .bubble-muted svg {
   width: 12px;
   height: 12px;
@@ -807,6 +842,52 @@ video.mirror {
 .media-controls .icon-button {
   width: 44px;
   height: 44px;
+}
+
+/* --- Reacciones --- */
+
+.toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.reaction-controls {
+  position: relative;
+}
+
+.emote-picker {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: rgb(26 32 44 / 0.96);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.emote-button,
+.emoji-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.emote-button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+}
+
+.emote-button:hover,
+.emote-button:focus-visible {
+  background: var(--panel-alt);
 }
 
 .media-note {

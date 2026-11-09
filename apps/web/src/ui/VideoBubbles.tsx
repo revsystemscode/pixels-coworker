@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { Track } from 'livekit-client';
+import { HAND_EMOJI } from '@pixels/shared';
 import { useMedia } from '../media/store.js';
+import { useReactions } from '../reactions/store.js';
 import { layoutBubbles } from './bubbleLayout.js';
 import { MicIcon } from './icons.js';
 import { VideoView } from './VideoView.js';
@@ -35,6 +37,8 @@ export function VideoBubbles({
   const localCamera = useMedia((s) => s.localCamera);
   const micOn = useMedia((s) => s.micOn);
   const selfSpeaking = useMedia((s) => s.selfSpeaking);
+  const hands = useReactions((s) => s.hands);
+  const emotes = useReactions((s) => s.emotes);
 
   const items: BubbleItem[] = Object.values(peers).map((p) => ({ ...p, self: false }));
   // La propia burbuja solo aparece si hay alguien cerca: así se sabe qué ven los demás.
@@ -117,7 +121,17 @@ export function VideoBubbles({
               {item.name.slice(0, 1).toUpperCase()}
             </span>
           )}
+          {emotes[item.id] && (
+            <span key={emotes[item.id]!.key} className="bubble-emote" aria-hidden>
+              {emotes[item.id]!.emoji}
+            </span>
+          )}
           <span className="bubble-name">
+            {hands[item.id] && (
+              <span className="bubble-hand" title="Mano levantada">
+                {HAND_EMOJI}
+              </span>
+            )}
             {item.micMuted && (
               <span className="bubble-muted" title="Micrófono apagado">
                 <MicIcon off />

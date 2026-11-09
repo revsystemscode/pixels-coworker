@@ -42,3 +42,10 @@ export const SettingsIcon = () => (
     <circle cx="18" cy="18" r="2" />
   </svg>
 );
+
+export const SmileIcon = () => (
+  <svg {...base}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M8 14a5 5 0 0 0 8 0M9 9.5h0M15 9.5h0" />
+  </svg>
+);

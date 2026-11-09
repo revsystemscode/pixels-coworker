@@ -1,8 +1,17 @@
 import type Phaser from 'phaser';
-import { MOVE_DURATION_MS, TILE_SIZE, type Direction, type Point } from '@pixels/shared';
+import {
+  EMOTE_DURATION_MS,
+  HAND_EMOJI,
+  MOVE_DURATION_MS,
+  TILE_SIZE,
+  type Direction,
+  type Point,
+} from '@pixels/shared';
 import { CHARACTER_SHEET, idleFrame, walkAnimKey } from './characters.js';
 
 const LABEL_FONT_PX = 24;
+const EMOTE_FONT_PX = 48;
+const EMOJI_FONTS = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
 // Si un jugador remoto acumula más pasos que esto sin dibujar, se teletransporta para no ir con retraso.
 const MAX_QUEUE = 3;
 
@@ -15,6 +24,10 @@ const center = (tile: Point) => ({
 export class Avatar {
   readonly sprite: Phaser.GameObjects.Sprite;
   private readonly label: Phaser.GameObjects.Text;
+  private emote: Phaser.GameObjects.Text | null = null;
+  /** Desplazamiento vertical de la reacción (sube mientras se desvanece). */
+  private emoteRise = 0;
+  private hand = false;
   private tile: Point;
   private dir: Direction;
   private queue: { tile: Point; dir: Direction }[] = [];
@@ -24,10 +37,10 @@ export class Avatar {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly avatar: number,
-    name: string,
+    private readonly name: string,
     tile: Point,
     dir: Direction,
-    zoom: number,
+    private readonly zoom: number,
   ) {
     this.tile = tile;
     this.dir = dir;
@@ -143,14 +156,72 @@ export class Avatar {
     this.walkTo(next.tile, next.dir, () => this.nextRemote());
   }
 
+  /** Muestra una reacción sobre la cabeza unos segundos (sustituye a la anterior). */
+  showEmote(emoji: string) {
+    this.clearEmote();
+    const emote = this.scene.add
+      .text(0, 0, emoji, { fontFamily: EMOJI_FONTS, fontSize: `${EMOTE_FONT_PX}px` })
+      .setOrigin(0.5, 1)
+      .setScale(1 / this.zoom)
+      .setDepth(10_001);
+    this.emote = emote;
+    this.emoteRise = 0;
+    this.scene.tweens.add({
+      targets: this,
+      emoteRise: 6,
+      duration: EMOTE_DURATION_MS,
+      onUpdate: () => this.sync(),
+    });
+    this.scene.tweens.add({
+      targets: emote,
+      alpha: 0,
+      delay: EMOTE_DURATION_MS * 0.7,
+      duration: EMOTE_DURATION_MS * 0.3,
+      onComplete: () => {
+        if (this.emote === emote) this.clearEmote();
+      },
+    });
+    this.sync();
+  }
+
+  /** Mano levantada: se ve junto al nombre. */
+  setHand(raised: boolean) {
+    if (raised === this.hand) return;
+    this.hand = raised;
+    this.label.setText(raised ? `${HAND_EMOJI} ${this.name}` : this.name);
+  }
+
+  get handRaised() {
+    return this.hand;
+  }
+
+  /** La reacción que se ve ahora (para pruebas). */
+  get currentEmote() {
+    return this.emote?.text ?? null;
+  }
+
+  private clearEmote() {
+    if (!this.emote) return;
+    this.scene.tweens.killTweensOf(this.emote);
+    this.scene.tweens.killTweensOf(this);
+    this.emote.destroy();
+    this.emote = null;
+  }
+
   /** Mantiene la etiqueta encima y ordena en profundidad (lo de más abajo se dibuja encima). */
   private sync() {
     this.label.setPosition(this.sprite.x, this.sprite.y - TILE_SIZE / 2 - 1);
+    // Si tiene burbuja de video, la tapa; por eso la reacción también se ve en la burbuja.
+    this.emote?.setPosition(
+      this.sprite.x,
+      this.label.y - this.label.displayHeight - 1 - this.emoteRise,
+    );
     this.sprite.setDepth(100 + this.sprite.y);
   }
 
   destroy() {
     this.cancelIdle();
+    this.clearEmote();
     this.scene.tweens.killTweensOf(this.sprite);
     this.sprite.destroy();
     this.label.destroy();

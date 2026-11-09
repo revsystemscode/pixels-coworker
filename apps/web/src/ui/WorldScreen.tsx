@@ -31,7 +31,7 @@ export function WorldScreen({ room, map }: { room: Room; map: TiledMap }) {
       </header>
       <ScreenShares />
       <MediaControls />
-      <p className="hint">Muévete con las flechas, WASD o haciendo clic en el mapa.</p>
+      <p className="hint">Muévete con las flechas, WASD o con clic. Reacciones: 1–6. Mano: H.</p>
       <BoardPrompt room={room} />
       <ChatPanel selfId={room.sessionId} />
       <BoardOverlay selfId={room.sessionId} />

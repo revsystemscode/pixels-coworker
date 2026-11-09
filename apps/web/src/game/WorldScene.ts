@@ -4,6 +4,9 @@ import {
   AVATAR_COUNT,
   ClientMessage,
   DIRECTIONS,
+  EMOTES,
+  EMOTE_IDS,
+  ServerMessage,
   TILE_SIZE,
   WHITEBOARD_REACH,
   distanceToRect,
@@ -13,10 +16,19 @@ import {
   whiteboardAt,
   whiteboardNear,
   type Direction,
+  type RemoteEmoteMessage,
   type TiledMap,
   type Whiteboard,
   type WorldMap,
 } from '@pixels/shared';
+import {
+  forgetReactions,
+  sendEmote,
+  setHand,
+  showEmote,
+  toggleHand,
+  useReactions,
+} from '../reactions/store.js';
 import { useBoard } from '../whiteboard/store.js';
 import { Avatar } from './Avatar.js';
 import { CHARACTER_SHEET, WALK_FRAME_RATE, walkAnimKey, walkFrames } from './characters.js';
@@ -30,6 +42,7 @@ interface PlayerState {
   y: number;
   dir: Direction;
   seq: number;
+  hand: boolean;
 }
 
 export interface WorldSceneData {
@@ -172,6 +185,18 @@ export class WorldScene extends Phaser.Scene {
       if (near && !open && !this.typing()) this.openBoard(near);
     });
 
+    // 1–6: reacciones. H: levantar o bajar la mano.
+    const canReact = () => !this.typing() && !useBoard.getState().open;
+    const numbers = [K.ONE, K.TWO, K.THREE, K.FOUR, K.FIVE, K.SIX];
+    EMOTE_IDS.forEach((emote, i) =>
+      kb.addKey(numbers[i]!, false).on('down', () => {
+        if (canReact()) sendEmote(this.room, emote);
+      }),
+    );
+    kb.addKey(K.H, false).on('down', () => {
+      if (canReact()) toggleHand(this.room);
+    });
+
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.predictor || useBoard.getState().open) return;
       const target = {
@@ -233,8 +258,11 @@ export class WorldScene extends Phaser.Scene {
           this.zoom,
         );
         this.avatars.set(sessionId, avatar);
+        avatar.setHand(player.hand);
+        setHand(sessionId, player.hand);
 
         if (isSelf) {
+          useReactions.setState({ handRaised: player.hand });
           this.self = avatar;
           this.predictor = new Predictor(this.world, player);
           this.cameras.main.startFollow(avatar.sprite, true);
@@ -242,6 +270,12 @@ export class WorldScene extends Phaser.Scene {
 
         this.detach.push(
           callbacks.onChange(player, () => {
+            // Solo cuando cambia en el servidor (no deshace lo que acabo de pulsar).
+            if (player.hand !== avatar.handRaised) {
+              avatar.setHand(player.hand);
+              setHand(sessionId, player.hand);
+              if (isSelf) useReactions.setState({ handRaised: player.hand });
+            }
             if (isSelf) {
               const corrected = this.predictor?.reconcile(player);
               if (corrected) {
@@ -259,6 +293,15 @@ export class WorldScene extends Phaser.Scene {
         const sessionId = key as string;
         this.avatars.get(sessionId)?.destroy();
         this.avatars.delete(sessionId);
+        forgetReactions(sessionId);
+      }),
+
+      this.room.onMessage(ServerMessage.Emote, (m: RemoteEmoteMessage) => {
+        const emote = EMOTES[m.emote];
+        const avatar = this.avatars.get(m.sessionId);
+        if (!emote || !avatar) return;
+        avatar.showEmote(emote.emoji);
+        showEmote(m.sessionId, emote.emoji);
       }),
     );
   }
@@ -341,12 +384,15 @@ export class WorldScene extends Phaser.Scene {
         id,
         x: Math.round(a.sprite.x),
         y: Math.round(a.sprite.y),
+        hand: a.handRaised,
+        emote: a.currentEmote,
       })),
     };
   }
 
   private cleanup() {
     useBoard.setState({ near: null });
+    useReactions.setState({ handRaised: false, hands: {}, emotes: {} });
     this.boardHighlights.clear();
     this.detach.forEach((off) => off());
     this.detach = [];

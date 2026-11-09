@@ -15,6 +15,10 @@ export const ClientMessage = {
   BoardUpdate: 'board-update',
   /** Posición del puntero dentro de la pizarra. */
   BoardPointer: 'board-pointer',
+  /** Reacción rápida sobre el avatar ({ emote }). Ver emotes.ts. */
+  Emote: 'emote',
+  /** Levanta o baja la mano ({ raised }). Queda en el estado del jugador. */
+  Hand: 'hand',
 } as const;
 
 /** Mensajes que el servidor de juego envía a los clientes. */
@@ -30,6 +34,8 @@ export const ServerMessage = {
   BoardPointer: 'board-pointer',
   BoardViewers: 'board-viewers',
   BoardError: 'board-error',
+  /** Alguien ha reaccionado ({ sessionId, emote }). */
+  Emote: 'emote',
 } as const;
 
 /** Opciones al entrar en la sala: el espacio y el ticket que da la API (POST /spaces/:id/join). */
