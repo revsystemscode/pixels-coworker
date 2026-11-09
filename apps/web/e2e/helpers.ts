@@ -159,6 +159,11 @@ export async function positionOf(page: Page, id: string) {
   return s.players.find((p) => p.id === id) ?? null;
 }
 
+/** Espera a que el juego vuelva a estar listo (por ejemplo, tras redibujar un mapa nuevo). */
+export async function waitForScene(page: Page) {
+  await expect.poll(async () => (await snapshot(page))?.tile ?? null).not.toBeNull();
+}
+
 /** Camina hasta una casilla (como un clic en el mapa) y espera a llegar. */
 export async function walkTo(page: Page, x: number, y: number) {
   expect(await page.evaluate(([tx, ty]) => window.__pixels!.walkTo(tx, ty), [x, y] as const)).toBe(

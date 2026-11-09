@@ -44,7 +44,7 @@ export async function buildApp({
     origin: corsOrigin,
     credentials: true,
     // @fastify/cors solo permite GET, HEAD y POST si no se indica.
-    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
 
   // Contra CSRF: las peticiones que cambian algo solo se aceptan desde la web.

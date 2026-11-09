@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import type { SpaceSummary } from '@pixels/shared';
+import { can, type SpaceSummary } from '@pixels/shared';
 import { ApiRequestError, api, errorMessage } from '../api.js';
 import { useSession } from '../auth.js';
 import { useApp } from '../store.js';
@@ -80,6 +80,11 @@ export function SpacePage() {
                   <Link to={`/perfil?next=/s/${space.id}`}>Cambiar</Link>
                 </span>
               </p>
+              {can.editMap(space.role) && (
+                <Link to={`/s/${space.id}/editor`} className="muted-link">
+                  Editar el mapa del espacio
+                </Link>
+              )}
               <MediaSetup />
               {error && (
                 <p className="error" role="alert">

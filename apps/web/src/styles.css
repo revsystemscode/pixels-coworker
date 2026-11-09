@@ -1337,3 +1337,228 @@ button.board-prompt:hover {
     display: none;
   }
 }
+
+/* --- Editor de mapas --- */
+
+a.button.secondary-link {
+  display: inline-block;
+  padding: 6px 12px;
+  background: var(--panel-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.editor {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  background: var(--bg);
+}
+
+.editor-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.editor-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.editor-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.editor-status.error {
+  color: var(--down);
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.editor-zoom,
+.editor-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.editor-toggle input {
+  width: auto;
+}
+
+.editor-message {
+  margin: 0;
+  padding: 8px 16px;
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-body {
+  display: grid;
+  grid-template-columns: 260px 1fr 260px;
+  min-height: 0;
+}
+
+.editor-sidebar {
+  overflow: auto;
+  padding: 12px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+.editor-properties {
+  border-right: 0;
+  border-left: 1px solid var(--border);
+}
+
+.editor-sidebar h3 {
+  margin: 14px 0 6px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.editor-tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.editor-tool-grid .active,
+.palette-item.active {
+  border-color: var(--accent);
+  background: rgb(91 141 239 / 0.2);
+}
+
+.editor-kinds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.editor-kinds input {
+  width: auto;
+  margin-right: 6px;
+}
+
+.editor-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+}
+
+.editor-categories .link-button {
+  padding: 0;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.editor-categories .link-button.active {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.editor-palette {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.palette-item {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.palette-item canvas {
+  image-rendering: pixelated;
+}
+
+.editor-viewport {
+  overflow: auto;
+  padding: 16px;
+  background: #0b0e14;
+}
+
+.editor-canvas {
+  display: block;
+  image-rendering: pixelated;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.editor-canvas.tool-select {
+  cursor: default;
+}
+
+.editor-form {
+  display: grid;
+  gap: 10px;
+}
+
+.editor-form h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.editor-numbers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+
+.editor-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.5);
+  z-index: 50;
+}
+
+.editor-dialog {
+  width: min(420px, calc(100vw - 32px));
+  display: grid;
+  gap: 12px;
+}
+
+.editor-dialog h2 {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .editor-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .editor-sidebar {
+    max-height: 30vh;
+    border: 0;
+  }
+}

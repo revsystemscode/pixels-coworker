@@ -7,7 +7,7 @@ import {
   toTiled,
   wallGridOf,
 } from '@pixels/shared';
-import { API_URL, closeBrowsers, joinAs, snapshot, walkTo } from './helpers.js';
+import { API_URL, closeBrowsers, joinAs, snapshot, waitForScene, walkTo } from './helpers.js';
 
 test.afterEach(closeBrowsers);
 test.setTimeout(120_000);
@@ -40,7 +40,10 @@ test('al publicar un mapa, quien está dentro lo ve sin salir y choca con lo nue
   await expect(
     bea.getByRole('status').filter({ hasText: 'Se ha actualizado el mapa' }),
   ).toBeVisible();
-  await expect.poll(async () => (await snapshot(bea)).tile).not.toEqual({ x: 10, y: 16 });
+  await waitForScene(bea);
+  const tile = (await snapshot(bea)).tile!;
+  expect(tile).not.toEqual({ x: 10, y: 16 });
+  expect(Math.abs(tile.x - 10) + Math.abs(tile.y - 16)).toBe(1);
   // Ya no se puede caminar hasta la casilla de la pared.
   expect(await bea.evaluate(() => window.__pixels!.walkTo(10, 16))).toBe(false);
   // Sigue en la misma sala (no ha tenido que volver a entrar).

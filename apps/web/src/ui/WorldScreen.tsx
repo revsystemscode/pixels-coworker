@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { Room } from '@colyseus/sdk';
-import type { TiledMap } from '@pixels/shared';
+import { can, type TiledMap } from '@pixels/shared';
 import { useApp } from '../store.js';
 import { GameCanvas } from '../game/GameCanvas.js';
 import { ObjectPanel, ObjectPrompt } from '../objects/ObjectPanel.js';
@@ -27,6 +27,17 @@ export function WorldScreen({ room, map }: { room: Room; map: TiledMap }) {
         <button type="button" className="secondary" onClick={() => setPanelOpen(true)}>
           Espacio
         </button>
+        {space && can.editMap(space.role) && (
+          // En otra pestaña: así sigues en el espacio y ves el cambio al publicar.
+          <a
+            className="button secondary-link"
+            href={`/s/${space.id}/editor`}
+            target="_blank"
+            rel="noopener"
+          >
+            Editar mapa
+          </a>
+        )}
         <button type="button" className="secondary" onClick={() => navigate('/')}>
           Salir
         </button>

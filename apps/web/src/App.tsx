@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, Route, Routes } from 'react-router';
 import { useSession } from './auth.js';
+import { EditorPage } from './editor/EditorPage.js';
 import { HomePage } from './pages/HomePage.js';
 import { InvitePage } from './pages/InvitePage.js';
 import { LoginPage } from './pages/LoginPage.js';
@@ -43,6 +44,14 @@ export function App() {
         element={
           <RequireAuth>
             <SpacePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/s/:spaceId/editor"
+        element={
+          <RequireAuth>
+            <EditorPage />
           </RequireAuth>
         }
       />

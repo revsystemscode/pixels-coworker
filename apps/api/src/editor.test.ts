@@ -57,6 +57,19 @@ function editedOffice(): TiledMap {
 }
 
 describe('editor de mapas', () => {
+  it('el navegador puede guardar el borrador desde la web (CORS permite PUT)', async () => {
+    const res = await t.app.inject({
+      method: 'OPTIONS',
+      url: '/spaces/x/editor/draft',
+      headers: {
+        origin: WEB_ORIGIN,
+        'access-control-request-method': 'PUT',
+        'access-control-request-headers': 'content-type',
+      },
+    });
+    expect(res.headers['access-control-allow-methods']).toContain('PUT');
+  });
+
   it('solo el dueño y los admins lo usan', async () => {
     const { owner, admin, member, url } = await setup();
     expect((await call(owner, 'GET', url)).statusCode).toBe(200);

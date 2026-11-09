@@ -10,7 +10,7 @@ export class ApiRequestError extends Error {
   }
 }
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /** Llama a la API con la cookie de sesión. Lanza ApiRequestError con el mensaje del servidor. */
 export async function api<T>(method: Method, path: string, body?: unknown): Promise<T> {
