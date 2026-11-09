@@ -1,16 +1,16 @@
 import { Redis } from 'ioredis';
-import { SPACE_EVENTS_CHANNEL, type SpaceEvent } from '@pixels/shared';
+import { SPACE_EVENTS_CHANNEL, isRole, type SpaceEvent } from '@pixels/shared';
 
 const isSpaceEvent = (value: unknown): value is SpaceEvent => {
   if (typeof value !== 'object' || value === null) return false;
   const e = value as Record<string, unknown>;
   if (typeof e.spaceId !== 'string') return false;
-  return (
-    e.type === 'space-deleted' || (e.type === 'member-removed' && typeof e.userId === 'string')
-  );
+  if (e.type === 'space-deleted') return true;
+  if (typeof e.userId !== 'string') return false;
+  return e.type === 'member-removed' || (e.type === 'role-changed' && isRole(e.role));
 };
 
-/** Escucha los avisos de la API (expulsiones, espacios borrados) en Redis. */
+/** Escucha los avisos de la API (expulsiones, cambios de rol, espacios borrados) en Redis. */
 export function subscribeSpaceEvents(
   url: string,
   onEvent: (event: SpaceEvent) => void,

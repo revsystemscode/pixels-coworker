@@ -8,7 +8,9 @@ import {
   ServerMessage,
   WHITEBOARD_REACH,
   WHITEBOARD_SAVE_DELAY_MS,
+  EDITABLE_KINDS,
   applyStep,
+  canEditObjects,
   distanceToRect,
   isWalkable,
   parseBoardOpen,
@@ -16,6 +18,8 @@ import {
   parseBoardUpdate,
   parseEmote,
   parseHand,
+  parseObjectEdit,
+  parseObjectValue,
   parseStep,
   parseWorldMap,
   sanitizeAvatar,
@@ -29,7 +33,12 @@ import {
   type BoardViewersMessage,
   type ChatEntry,
   type MediaTicketMessage,
+  type ObjectContentMessage,
+  type ObjectContentsMessage,
+  type ObjectErrorMessage,
   type RemoteEmoteMessage,
+  type Role,
+  type RoleChangedMessage,
   type SpaceEvent,
   type WorldMap,
 } from '@pixels/shared';
@@ -46,6 +55,7 @@ interface ClientLimits {
   boardUpdates: TokenBucket;
   boardPointer: TokenBucket;
   emotes: TokenBucket;
+  objectEdits: TokenBucket;
 }
 
 /** Lo que la sala recibe del servidor (no del cliente). */
@@ -70,6 +80,7 @@ export function handleSpaceEvent(event: SpaceEvent) {
   const room = roomsBySpace.get(event.spaceId);
   if (!room) return;
   if (event.type === 'space-deleted') room.closeDeleted();
+  else if (event.type === 'role-changed') room.changeRole(event.userId, event.role);
   else room.removeUser(event.userId);
 }
 
@@ -88,6 +99,12 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   protected map!: WorldMap;
   spaceId = '';
   private users = new Map<string, string>();
+  /** Rol de cada sesión en el espacio (sale del ticket y lo actualiza la API). */
+  private roles = new Map<string, Role>();
+  /** Contenido actual de los objetos editables (enlaces, videos y notas), por id. */
+  private objectValues = new Map<string, string>();
+  /** Los guardados de objetos van en orden (el último en llegar es el que queda). */
+  private objectSaves: Promise<void> = Promise.resolve();
   private limits = new Map<string, ClientLimits>();
   private chatHistory: ChatEntry[] = [];
   private chatCounter = 0;
@@ -117,6 +134,10 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       const tiled = await this.deps.store.loadMap(spaceId);
       if (!tiled) throw new ServerError(404, 'El espacio no existe');
       this.map = parseWorldMap(tiled);
+      const saved = await this.deps.store.loadObjects(spaceId);
+      for (const o of this.map.objects) {
+        if (EDITABLE_KINDS.includes(o.kind)) this.objectValues.set(o.id, saved[o.id] ?? o.initial);
+      }
     } catch (err) {
       roomsBySpace.delete(spaceId);
       throw err;
@@ -127,6 +148,7 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     this.onMessage(ClientMessage.MediaTicket, (client) => this.handleMediaTicket(client));
     this.onMessage(ClientMessage.Emote, (client, raw) => this.handleEmote(client, raw));
     this.onMessage(ClientMessage.Hand, (client, raw) => this.handleHand(client, raw));
+    this.onMessage(ClientMessage.ObjectEdit, (client, raw) => this.handleObjectEdit(client, raw));
     this.onMessage(ClientMessage.BoardOpen, (client, raw) => this.handleBoardOpen(client, raw));
     this.onMessage(ClientMessage.BoardClose, (client) => this.closeBoard(client.sessionId));
     this.onMessage(ClientMessage.BoardUpdate, (client, raw) => this.handleBoardUpdate(client, raw));
@@ -164,6 +186,7 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     const start = position && isWalkable(this.map, position.x, position.y) ? position : null;
 
     this.users.set(client.sessionId, ticket.uid);
+    this.roles.set(client.sessionId, ticket.role);
     this.state.players.set(
       client.sessionId,
       new Player({
@@ -184,8 +207,12 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       boardPointer: new TokenBucket(15, 15),
       // Reacciones y mano: unas cuantas seguidas, pero no una lluvia.
       emotes: new TokenBucket(1, 4),
+      objectEdits: new TokenBucket(0.5, 3),
     });
     client.send(ServerMessage.ChatHistory, this.chatHistory);
+    client.send(ServerMessage.ObjectContents, {
+      contents: Object.fromEntries(this.objectValues),
+    } satisfies ObjectContentsMessage);
     this.sendMediaTicket(client);
   }
 
@@ -222,8 +249,18 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     }
   }
 
+  /** La API cambió el rol de una cuenta: vale desde ya (y su interfaz se entera). */
+  changeRole(userId: string, role: Role) {
+    for (const client of this.clients) {
+      if (this.users.get(client.sessionId) !== userId) continue;
+      this.roles.set(client.sessionId, role);
+      client.send(ServerMessage.RoleChanged, { role } satisfies RoleChangedMessage);
+    }
+  }
+
   private forget(sessionId: string) {
     this.closeBoard(sessionId);
+    this.roles.delete(sessionId);
     this.state.players.delete(sessionId);
     this.limits.delete(sessionId);
     this.users.delete(sessionId);
@@ -454,6 +491,46 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       this.deps.ticketSecret,
     );
     client.send(ServerMessage.MediaTicket, { ticket } satisfies MediaTicketMessage);
+  }
+
+  // --- Objetos (enlaces, videos y notas) ---
+
+  private async handleObjectEdit(client: Client, raw: unknown) {
+    const msg = parseObjectEdit(raw);
+    const limits = this.limits.get(client.sessionId);
+    const role = this.roles.get(client.sessionId);
+    if (!msg || !limits || !role) return;
+    const fail = (message: string) =>
+      client.send(ServerMessage.ObjectError, {
+        objectId: msg.objectId,
+        message,
+      } satisfies ObjectErrorMessage);
+
+    const object = this.map.objects.find((o) => o.id === msg.objectId);
+    if (!object || !EDITABLE_KINDS.includes(object.kind)) return;
+    if (!canEditObjects(role)) return fail('Solo el dueño y los admins pueden cambiar esto.');
+    if (!limits.objectEdits.tryConsume(this.now())) {
+      return fail('Demasiados cambios seguidos. Espera un momento.');
+    }
+    const parsed = parseObjectValue(object.kind, msg.value);
+    if (!parsed.ok) return fail(parsed.error);
+
+    const save = this.objectSaves.then(async () => {
+      if (this.deleted) return;
+      await this.deps.store.saveObject(this.spaceId, object.id, parsed.value);
+      this.objectValues.set(object.id, parsed.value);
+      this.broadcast(ServerMessage.ObjectContent, {
+        objectId: object.id,
+        value: parsed.value,
+      } satisfies ObjectContentMessage);
+    });
+    this.objectSaves = save.catch(() => {});
+    try {
+      await save;
+    } catch (err) {
+      this.deps.onError?.('No se pudo guardar el objeto', err);
+      fail('No se pudo guardar. Inténtalo de nuevo.');
+    }
   }
 
   // --- Reacciones ---

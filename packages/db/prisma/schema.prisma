@@ -122,6 +122,7 @@ model Space {
   memberships Membership[]
   invites     Invite[]
   whiteboards Whiteboard[]
+  objects     SpaceObject[]
 
   @@index([mapId])
   @@map("spaces")
@@ -186,4 +187,25 @@ model Whiteboard {
 
   @@id([spaceId, boardId])
   @@map("whiteboards")
+}
+
+/**
+ * Contenido de un objeto interactivo del mapa (enlace, video o nota) cambiado desde el juego. Si no
+ * hay fila, vale el contenido inicial del mapa.
+ */
+model SpaceObject {
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  /**
+   * Id del objeto en el mapa (capa "objects" de Tiled), por ejemplo "obj-7".
+   */
+  objectId  String
+  /**
+   * Dirección (enlace), "youtube:<id>" o "vimeo:<id>" (video), o texto (nota).
+   */
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@id([spaceId, objectId])
+  @@map("space_objects")
 }

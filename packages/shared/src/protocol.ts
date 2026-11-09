@@ -1,4 +1,5 @@
 import { isAvatar } from './avatar.js';
+import type { Role } from './roles.js';
 import { CHAT_MAX_LENGTH, NAME_MAX_LENGTH } from './constants.js';
 import { isDirection, type Direction } from './direction.js';
 
@@ -20,6 +21,8 @@ export const ClientMessage = {
   Emote: 'emote',
   /** Levanta o baja la mano ({ raised }). Queda en el estado del jugador. */
   Hand: 'hand',
+  /** Cambia el contenido de un objeto ({ objectId, value }). Solo dueño y admins. */
+  ObjectEdit: 'object-edit',
 } as const;
 
 /** Mensajes que el servidor de juego envía a los clientes. */
@@ -37,6 +40,13 @@ export const ServerMessage = {
   BoardError: 'board-error',
   /** Alguien ha reaccionado ({ sessionId, emote }). */
   Emote: 'emote',
+  /** Al entrar: contenido de los objetos del mapa. Ver objects.ts. */
+  ObjectContents: 'object-contents',
+  /** Alguien cambió un objeto. */
+  ObjectContent: 'object-content',
+  ObjectError: 'object-error',
+  /** Mi rol en el espacio ha cambiado. */
+  RoleChanged: 'role-changed',
 } as const;
 
 /** Opciones al entrar en la sala: el espacio y el ticket que da la API (POST /spaces/:id/join). */
@@ -85,6 +95,7 @@ export const SPACE_EVENTS_CHANNEL = 'pixels:space-events';
 /** La API los publica; el servidor de juego saca de la sala a quien ya no tiene acceso. */
 export type SpaceEvent =
   | { type: 'member-removed'; spaceId: string; userId: string }
+  | { type: 'role-changed'; spaceId: string; userId: string; role: Role }
   | { type: 'space-deleted'; spaceId: string };
 
 /** Códigos con los que el servidor de juego cierra la conexión (el cliente muestra el motivo). */

@@ -17,6 +17,9 @@ export interface SpaceStore {
   /** Elementos guardados de una pizarra ([] si aún no se ha dibujado nada). */
   loadBoard(spaceId: string, boardId: string): Promise<unknown[]>;
   saveBoard(spaceId: string, boardId: string, elements: BoardElement[]): Promise<void>;
+  /** Contenido de los objetos cambiado desde el juego, por id (los demás valen lo del mapa). */
+  loadObjects(spaceId: string): Promise<Record<string, string>>;
+  saveObject(spaceId: string, objectId: string, value: string): Promise<void>;
 }
 
 export function createDbSpaceStore(db: Db): SpaceStore {
@@ -57,6 +60,20 @@ export function createDbSpaceStore(db: Db): SpaceStore {
         update: { elements: data },
       });
     },
+    async loadObjects(spaceId) {
+      const rows = await db.spaceObject.findMany({
+        where: { spaceId },
+        select: { objectId: true, value: true },
+      });
+      return Object.fromEntries(rows.map((r) => [r.objectId, r.value]));
+    },
+    async saveObject(spaceId, objectId, value) {
+      await db.spaceObject.upsert({
+        where: { spaceId_objectId: { spaceId, objectId } },
+        create: { spaceId, objectId, value },
+        update: { value },
+      });
+    },
   };
 }
 
@@ -65,6 +82,7 @@ export class MemorySpaceStore implements SpaceStore {
   readonly maps = new Map<string, TiledMap>();
   readonly positions = new Map<string, SavedPosition>();
   readonly boards = new Map<string, BoardElement[]>();
+  readonly objects = new Map<string, Record<string, string>>();
 
   async loadMap(spaceId: string) {
     return this.maps.get(spaceId) ?? null;
@@ -80,5 +98,11 @@ export class MemorySpaceStore implements SpaceStore {
   }
   async saveBoard(spaceId: string, boardId: string, elements: BoardElement[]) {
     this.boards.set(`${spaceId}/${boardId}`, structuredClone(elements));
+  }
+  async loadObjects(spaceId: string) {
+    return { ...this.objects.get(spaceId) };
+  }
+  async saveObject(spaceId: string, objectId: string, value: string) {
+    this.objects.set(spaceId, { ...this.objects.get(spaceId), [objectId]: value });
   }
 }

@@ -6,6 +6,7 @@ export * from './emotes.js';
 export * from './health.js';
 export * from './map.js';
 export * from './maps/index.js';
+export * from './objects.js';
 export * from './pathfinding.js';
 export * from './protocol.js';
 export * from './proximity.js';

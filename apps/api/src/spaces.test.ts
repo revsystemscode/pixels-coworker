@@ -157,6 +157,12 @@ describe('miembros y roles', () => {
     expect((await setRole(cookies.owner, ids.owner, 'admin')).statusCode).toBe(403);
     expect((await setRole(cookies.owner, ids.member, 'admin')).statusCode).toBe(200);
     expect((await setRole(cookies.owner, ids.member, 'superadmin' as Role)).statusCode).toBe(400);
+
+    // El servidor de juego se entera de los cambios (para los permisos dentro de la sala).
+    expect(t.events.filter((e) => e.type === 'role-changed').slice(-2)).toEqual([
+      { type: 'role-changed', spaceId: space.id, userId: ids.guest, role: 'member' },
+      { type: 'role-changed', spaceId: space.id, userId: ids.member, role: 'admin' },
+    ]);
   });
 
   it('expulsar y salir', async () => {

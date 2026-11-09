@@ -9,16 +9,23 @@ export interface TestZone {
   height: number;
 }
 
+/** Objeto interactivo de prueba: tipo (link, video, note, game) y contenido inicial. */
+export interface TestObject extends TestZone {
+  type: string;
+  value?: string;
+}
+
 /**
  * Crea un TiledMap pequeño a partir de un dibujo ASCII, para pruebas.
  * '#' = bloqueado, '.' = libre, 'S' = libre y punto de aparición.
- * `zones` y `whiteboards` (en tiles) añaden la capa de zonas privadas y la de pizarras.
+ * `zones`, `whiteboards` y `objects` (en tiles) añaden esas capas.
  */
 export function tiledFromAscii(
   rows: string[],
   tileSize = 16,
   zones: TestZone[] = [],
   whiteboards: TestZone[] = [],
+  objects: TestObject[] = [],
 ): TiledMap {
   const width = rows[0]!.length;
   const height = rows.length;
@@ -30,7 +37,7 @@ export function tiledFromAscii(
       if (c === 'S') spawn = { x, y };
     }),
   );
-  const rectLayer = (name: string, rects: TestZone[]) =>
+  const rectLayer = (name: string, rects: (TestZone | TestObject)[]) =>
     rects.length
       ? [
           {
@@ -43,6 +50,10 @@ export function tiledFromAscii(
               y: z.y * tileSize,
               width: z.width * tileSize,
               height: z.height * tileSize,
+              ...('type' in z ? { type: z.type } : {}),
+              ...('value' in z && z.value !== undefined
+                ? { properties: [{ name: 'value', type: 'string', value: z.value }] }
+                : {}),
             })),
           },
         ]
@@ -63,6 +74,7 @@ export function tiledFromAscii(
       },
       ...rectLayer('zones', zones),
       ...rectLayer('whiteboards', whiteboards),
+      ...rectLayer('objects', objects),
     ],
   };
 }

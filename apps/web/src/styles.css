@@ -57,7 +57,8 @@ button.secondary {
   padding: 6px 12px;
 }
 
-input {
+input,
+textarea {
   font: inherit;
   color: var(--text);
   background: var(--bg);
@@ -68,6 +69,7 @@ input {
 }
 
 input:focus-visible,
+textarea:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -1025,6 +1027,110 @@ video.mirror {
     right: 12px;
     max-height: 40vh;
   }
+}
+
+/* --- Objetos del mapa (enlace, video, nota) --- */
+
+.object-panel {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, calc(100vw - 24px));
+  max-height: calc(100vh - 200px);
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  z-index: 20;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.4);
+}
+
+.object-panel.object-video {
+  width: min(760px, calc(100vw - 24px));
+}
+
+.object-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.object-header > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.object-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.object-kind {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.object-note {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.object-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.object-link {
+  display: grid;
+  gap: 10px;
+}
+
+.object-url {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.object-url strong {
+  color: var(--text);
+}
+
+.object-video {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.object-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.object-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.object-editor textarea {
+  resize: vertical;
+}
+
+.object-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* --- Pizarra --- */

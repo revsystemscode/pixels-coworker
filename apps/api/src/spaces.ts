@@ -143,6 +143,7 @@ export function registerSpaceRoutes(app: FastifyInstance, db: Db, publish: Publi
       where: { spaceId_userId: { spaceId, userId } },
       data: { role: toDbRole(next) },
     });
+    publish({ type: 'role-changed', spaceId, userId, role: next });
     return { userId, role: next };
   });
 

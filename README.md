@@ -35,6 +35,26 @@ Sin Docker puedes arrancar solo las apps con `pnpm dev:apps` (los servicios apar
 
 ## Cómo probar
 
+### Fase 4 · Enlace, video y nota
+
+1. `pnpm dev`. Entra con dos cuentas al mismo espacio: la dueña (quien lo creó) y un miembro.
+2. En la oficina hay un **Tablón de anuncios** (pared de la izquierda), un **Enlace del equipo**
+   (pared de la derecha) y una **Pantalla** en la cocina. Acércate a 2 casillas: se resalta y aparece
+   **Abrir «…»**. Se abre con ese botón, con **E** o con un clic (el avatar camina hasta él). Se cierra
+   con **Cerrar**, con Escape o alejándose.
+3. Como dueña o admin pulsa **Editar**: texto de la nota, dirección web del enlace (se abre en otra
+   pestaña) o enlace de YouTube o Vimeo para la pantalla. Quien lo tenga abierto lo ve al momento y se
+   guarda en la base de datos.
+4. Con la cuenta de miembro (o invitado) se ve todo, pero no aparece **Editar**.
+
+Los objetos se colocan en el mapa con la capa de objetos `objects` de Tiled (tipos `link`, `video`,
+`note` y `game`; propiedad opcional `value` con el contenido inicial). Por seguridad, la pantalla solo
+acepta YouTube (dominio sin cookies) y Vimeo, y los enlaces solo `http` y `https`.
+
+```bash
+pnpm --filter @pixels/web e2e objects
+```
+
 ### Fase 4 · Personalizar el avatar
 
 1. En **Tu perfil** (pulsa tu avatar arriba a la derecha, o **Cambiar** antes de entrar a un espacio)
@@ -237,11 +257,15 @@ y el servidor (para validar colisiones). Se pueden abrir y editar con
 - Capa de objetos `whiteboards` (opcional): cada **rectángulo** es una pizarra (el juego la dibuja;
   normalmente va sobre una pared). Su nombre es el que se ve al abrirla. Lo dibujado se guarda con el
   id del objeto en Tiled: si se mueve la pizarra en el mapa, el contenido la sigue.
+- Capa de objetos `objects` (opcional): cada **rectángulo** es un objeto interactivo según su tipo
+  (`link`, `video`, `note` o `game`, la mesa del minijuego). La propiedad `value` (texto) es su
+  contenido inicial; lo que cambien el dueño o los admins se guarda aparte, con el id del objeto.
 
 `office.json` se generó con `node tools/build-office-map.mjs`. Si lo editas en Tiled, no vuelvas a
 ejecutar ese script (sobrescribiría tus cambios). Los cambios en la plantilla solo afectan a los
-espacios nuevos: los que ya existen tienen su propia copia (para las pizarras, una migración se la
-añadió a los espacios ya creados con la oficina).
+espacios nuevos: los que ya existen tienen su propia copia. Para las pizarras y los objetos, una
+migración actualizó los espacios ya creados con la oficina (solo los que seguían siendo la plantilla
+sin cambios).
 
 `@pixels/shared` se consume desde el código fuente en desarrollo (condición de exportación `source`), así
 que no hace falta compilarlo para `pnpm dev`, `pnpm test` ni `pnpm typecheck`. `pnpm build` lo compila a

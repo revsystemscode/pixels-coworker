@@ -45,10 +45,17 @@ export const MEDIA_TICKET_TTL_MS = 60_000;
 /** Vida del ticket para entrar a la sala de un espacio (API → servidor de juego). */
 export const JOIN_TICKET_TTL_MS = 60_000;
 
+// --- Objetos del mapa ---
+
+/** Pizarras y objetos se abren desde INTERACT_REACH casillas o menos (en cualquier dirección). */
+export const INTERACT_REACH = 2;
+/** Longitud máxima del texto de una nota y de una dirección web. */
+export const NOTE_MAX_LENGTH = 2_000;
+export const URL_MAX_LENGTH = 2_000;
+
 // --- Pizarra ---
 
-/** Se puede abrir una pizarra desde WHITEBOARD_REACH casillas o menos (en cualquier dirección). */
-export const WHITEBOARD_REACH = 2;
+export const WHITEBOARD_REACH = INTERACT_REACH;
 /** Máximo de elementos por pizarra (contando los borrados que aún se guardan). */
 export const WHITEBOARD_MAX_ELEMENTS = 3000;
 /** Tamaño máximo de una pizarra (JSON) y de un elemento (un trazo largo a mano ronda 50 KB). */

@@ -177,6 +177,11 @@ for (const [x0, y0] of [
   for (let dx = 0; dx < 4; dx++) put(furniture, x0 + dx, y0 + 1, indoor(109), { block: false });
 }
 
+// Mesa de juegos (tres en raya) con una silla a cada lado
+putRect(furniture, 34, 16, [[112, 114]]);
+put(furniture, 33, 16, indoor(57), { block: false });
+put(furniture, 36, 16, indoor(56), { block: false });
+
 // Plantas en las esquinas de la oficina
 for (const [x, y] of [
   [1, 11],
@@ -231,17 +236,41 @@ for (const b of WHITEBOARDS)
       if (!facesAt.has(idx(x, y)))
         throw new Error(`La pizarra "${b.name}" no está sobre una pared`);
 
+// Objetos interactivos (en tiles). Los de pared van sobre la cara de la pared; la mesa, sobre la
+// mesa de juegos. `value` es el contenido inicial (dueño y admins lo cambian desde el juego).
+const OBJECTS = [
+  { name: 'Pantalla de la cocina', type: 'video', x: 18, y: 1, width: 3, height: 2, wall: true },
+  {
+    name: 'Tablón de anuncios',
+    type: 'note',
+    x: 2,
+    y: 9,
+    width: 2,
+    height: 2,
+    wall: true,
+    value: '¡Bienvenidos a la oficina! El dueño y los admins pueden cambiar esta nota.',
+  },
+  { name: 'Enlace del equipo', type: 'link', x: 27, y: 9, width: 2, height: 2, wall: true },
+  { name: 'Mesa de juegos', type: 'game', x: 34, y: 16, width: 2, height: 1 },
+];
+for (const o of OBJECTS)
+  for (let y = o.y; y < o.y + o.height; y++)
+    for (let x = o.x; x < o.x + o.width; x++)
+      if (o.wall ? !facesAt.has(idx(x, y)) : !collision[idx(x, y)] || facesAt.has(idx(x, y)))
+        throw new Error(`"${o.name}" no está sobre ${o.wall ? 'una pared' : 'un mueble'}`);
+
 const rectObjects = (rects, firstId, type) =>
   rects.map((r, i) => ({
     id: firstId + i,
     name: r.name,
-    type,
+    type: r.type ?? type,
     x: r.x * T,
     y: r.y * T,
     width: r.width * T,
     height: r.height * T,
     rotation: 0,
     visible: true,
+    ...(r.value ? { properties: [{ name: 'value', type: 'string', value: r.value }] } : {}),
   }));
 const objectLayer = (id, name, objects, extra = {}) => ({
   id,
@@ -267,8 +296,8 @@ const map = {
   height: H,
   tilewidth: T,
   tileheight: T,
-  nextlayerid: 9,
-  nextobjectid: 2 + ZONES.length + WHITEBOARDS.length,
+  nextlayerid: 10,
+  nextobjectid: 2 + ZONES.length + WHITEBOARDS.length + OBJECTS.length,
   layers: [
     tileLayer(1, 'floor', floor),
     tileLayer(2, 'walls', walls),
@@ -308,6 +337,8 @@ const map = {
     objectLayer(7, 'zones', rectObjects(ZONES, 2, 'private'), { opacity: 0.4, visible: false }),
     // Pizarras: el juego las dibuja (el pack de Kenney no trae ninguna).
     objectLayer(8, 'whiteboards', rectObjects(WHITEBOARDS, 2 + ZONES.length, 'whiteboard')),
+    // Enlaces, videos, notas y la mesa de juegos: también los dibuja el juego.
+    objectLayer(9, 'objects', rectObjects(OBJECTS, 2 + ZONES.length + WHITEBOARDS.length)),
   ],
   tilesets: [
     {
