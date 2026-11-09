@@ -1,0 +1,14 @@
+# Lo que no entra en las imágenes (se instala y compila dentro).
+**/node_modules
+**/dist
+**/.turbo
+**/test-results
+**/playwright-report
+**/coverage
+packages/db/src/generated
+.git
+.env
+.env.*
+!.env.example
+deploy/.env
+deploy/backups

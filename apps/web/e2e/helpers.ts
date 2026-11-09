@@ -35,7 +35,11 @@ export async function closeBrowsers() {
 export async function newBrowserPage(): Promise<Page> {
   const browser = await chromium.launch(LAUNCH);
   browsers.push(browser);
-  return browser.newPage({ viewport: { width: 1280, height: 800 } });
+  return browser.newPage({
+    viewport: { width: 1280, height: 800 },
+    // Certificados de prueba (Caddy con local_certs) al probar la pila de producción en local.
+    ignoreHTTPSErrors: !!process.env.E2E_IGNORE_HTTPS_ERRORS,
+  });
 }
 
 /** Correo único por prueba: cada ejecución usa cuentas nuevas. */

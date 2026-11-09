@@ -252,6 +252,17 @@ de bajada por persona (sin contar el video).
 2. En la pantalla de login, el panel **Servicios (desarrollo)** muestra los 5 servicios en verde.
 3. `docker compose ps` muestra `postgres`, `redis`, `mailpit` y `livekit` en marcha.
 
+## Producción
+
+Un servidor con Docker Compose: Caddy (HTTPS automático), API, servidor de juego, LiveKit con TURN por
+TLS en el 443, Postgres, Redis y copias diarias. Guía completa (servidor, DNS, correo, despliegue,
+copias y prueba de humo): [`docs/produccion.md`](./docs/produccion.md).
+
+```bash
+cd deploy && cp .env.production.example .env   # y rellénalo
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
 ## Estructura
 
 ```

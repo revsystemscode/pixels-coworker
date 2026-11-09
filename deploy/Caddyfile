@@ -1,0 +1,102 @@
+# Entrada de producción: HTTPS automático (Let's Encrypt) para la web, la API, el juego y LiveKit, y el
+# TURN de LiveKit por TLS en el puerto 443 (para redes que solo dejan salir por el 443).
+#
+#   https://DOMINIO           web (estática)
+#   https://DOMINIO/api/*     API (se quita /api; /api/auth/* pasa tal cual: es el login)
+#   https://DOMINIO/game/*    servidor de juego (WebSocket)
+#   https://rtc.DOMINIO       señalización de LiveKit (WebSocket)
+#   turn.DOMINIO:443          TURN por TLS (lo reparte caddy-l4 según el nombre, SNI)
+#
+# El puerto 443 lo atiende caddy-l4: lo de turn.DOMINIO va a LiveKit y el resto al servidor HTTP de
+# Caddy (puerto 8443 interno) con PROXY protocol, para que la API vea la IP real de cada persona.
+# Variables: DOMAIN, ACME_EMAIL y, opcionales, CADDY_GLOBAL_EXTRA (p. ej. «local_certs» para probar en
+# local) y CSP_CONNECT_EXTRA (orígenes extra para connect-src, p. ej. el de Sentry).
+{
+	email {$ACME_EMAIL}
+	{$CADDY_GLOBAL_EXTRA}
+	https_port 8443
+	# Las redirecciones a HTTPS se hacen abajo (las automáticas apuntarían al puerto 8443).
+	auto_https disable_redirects
+
+	servers :8443 {
+		listener_wrappers {
+			proxy_protocol {
+				allow 127.0.0.1/32 ::1/128
+			}
+			tls
+		}
+	}
+
+	layer4 {
+		:443 {
+			@turn tls sni turn.{$DOMAIN}
+			route @turn {
+				tls
+				proxy 127.0.0.1:5349
+			}
+			route {
+				proxy {
+					proxy_protocol v2
+					upstream 127.0.0.1:8443
+				}
+			}
+		}
+	}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=()"
+		-Server
+	}
+}
+
+http:// {
+	redir https://{host}{uri} permanent
+}
+
+{$DOMAIN} {
+	import security_headers
+	encode zstd gzip
+
+	# El login (Better Auth) espera su ruta completa: /api/auth/*.
+	handle /api/auth/* {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle_path /api/* {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle_path /game/* {
+		reverse_proxy 127.0.0.1:2567
+	}
+
+	handle {
+		header {
+			# Lo que puede cargar la web. Excalidraw usa WebAssembly al exportar; Phaser, imágenes data:.
+			# Los videos de los objetos solo vienen de YouTube (sin cookies) y Vimeo.
+			Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss://{$DOMAIN} https://rtc.{$DOMAIN} wss://rtc.{$DOMAIN} {$CSP_CONNECT_EXTRA}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+			X-Frame-Options "DENY"
+		}
+		root * /srv/web
+		# Los archivos con hash en el nombre no cambian nunca; index.html, siempre se revisa.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@other not path /assets/*
+		header @other Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+rtc.{$DOMAIN} {
+	import security_headers
+	reverse_proxy 127.0.0.1:7880
+}
+
+# Solo para que Caddy obtenga y renueve el certificado de turn.DOMINIO (lo usa caddy-l4 arriba).
+turn.{$DOMAIN} {
+	respond "TURN de LiveKit" 404
+}

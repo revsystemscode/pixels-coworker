@@ -6,8 +6,11 @@ import { defineConfig, devices } from '@playwright/test';
 const webPort = Number(process.env.WEB_PORT ?? 5173);
 const gamePort = Number(process.env.GAME_SERVER_PORT ?? 2567);
 const apiPort = Number(process.env.API_PORT ?? 3001);
-process.env.E2E_BASE_URL = `http://localhost:${webPort}/`;
-process.env.E2E_API_URL = `http://localhost:${apiPort}`;
+// Contra un despliegue (por ejemplo, la prueba de humo de producción): E2E_BASE_URL y E2E_API_URL ya
+// vienen dadas y no se arranca nada.
+const external = !!process.env.E2E_BASE_URL;
+process.env.E2E_BASE_URL ??= `http://localhost:${webPort}/`;
+process.env.E2E_API_URL ??= `http://localhost:${apiPort}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -21,24 +24,26 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
     viewport: { width: 1280, height: 800 },
   },
-  webServer: [
-    {
-      command: 'pnpm --filter @pixels/game-server dev',
-      cwd: '../..',
-      url: `http://localhost:${gamePort}/health`,
-      reuseExistingServer: true,
-    },
-    {
-      command: 'pnpm --filter @pixels/api dev',
-      cwd: '../..',
-      url: `http://localhost:${apiPort}/health`,
-      reuseExistingServer: true,
-    },
-    {
-      command: `pnpm --filter @pixels/web exec vite --port ${webPort} --strictPort`,
-      cwd: '../..',
-      url: `http://localhost:${webPort}`,
-      reuseExistingServer: true,
-    },
-  ],
+  webServer: external
+    ? []
+    : [
+        {
+          command: 'pnpm --filter @pixels/game-server dev',
+          cwd: '../..',
+          url: `http://localhost:${gamePort}/health`,
+          reuseExistingServer: true,
+        },
+        {
+          command: 'pnpm --filter @pixels/api dev',
+          cwd: '../..',
+          url: `http://localhost:${apiPort}/health`,
+          reuseExistingServer: true,
+        },
+        {
+          command: `pnpm --filter @pixels/web exec vite --port ${webPort} --strictPort`,
+          cwd: '../..',
+          url: `http://localhost:${webPort}`,
+          reuseExistingServer: true,
+        },
+      ],
 });

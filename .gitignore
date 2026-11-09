@@ -13,3 +13,4 @@ test-results/
 
 # Cliente de Prisma generado (pnpm install lo regenera)
 packages/db/src/generated/
+!deploy/.env.production.example

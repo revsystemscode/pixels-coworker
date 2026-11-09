@@ -2,6 +2,42 @@
 
 Registro breve de decisiones de producto y de arquitectura. Lo más reciente, arriba.
 
+## Producción (Fase 6)
+
+| Tema        | Decisión                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| Hosting     | **Un VPS** (p. ej. Hetzner, 4–8 vCPU, 8–16 GB) con **Docker Compose**                             |
+| Direcciones | **Un dominio por rutas**: `/` web, `/api` API, `/game` juego; `rtc.` LiveKit y `turn.` su TURN    |
+| HTTPS       | **Caddy** con Let's Encrypt; caddy-l4 reparte el 443 entre la web y el **TURN por TLS**           |
+| Correo      | **Postmark o Resend** por SMTP (el código no cambia), con SPF y DKIM en el DNS                    |
+| Monitoreo   | **Sentry** (errores) y un **monitor externo** de disponibilidad con alertas por correo            |
+| Capacidad   | **100 personas por espacio**, probado con el espacio lleno (ver README)                           |
+| Despliegue  | En el servidor: `deploy/deploy.sh` (construye, migra, reinicia y comprueba); o el workflow Deploy |
+| Copias      | `pg_dump` diario en el servidor, 14 días. Copiarlas fuera queda a cargo del equipo                |
+
+- **Por qué un dominio con rutas**: la web, la API y el juego comparten origen (cookies sencillas y una
+  CSP corta) y la web se compila una vez para cualquier dominio (direcciones relativas). El login
+  (`/api/auth/*`) pasa a la API sin quitar el prefijo, porque Better Auth lo espera así.
+- **TURN por TLS en el 443**: muchas redes de empresa solo dejan salir por el 443. caddy-l4 mira el
+  nombre pedido (SNI): `turn.DOMINIO` termina el TLS y va al TURN de LiveKit; el resto va a Caddy con
+  PROXY protocol, para que la API siga viendo la IP real de cada persona (límites por IP).
+- **LiveKit y Caddy usan la red del servidor** (LiveKit necesita sus puertos UDP). La API y el juego
+  solo escuchan en `127.0.0.1`; Postgres y Redis no se publican.
+- **Seguridad**: límite de peticiones por IP en la API (600/min; menos al crear espacios e
+  invitaciones, aceptar invitaciones, guardar borradores y publicar), cabeceras (HSTS, CSP,
+  `nosniff`, `frame-ancestors 'none'`, Permissions-Policy para cámara y micrófono) y cookies `Secure`.
+  En producción la API y el juego no arrancan con secretos de ejemplo, cortos o del modo dev, ni sin
+  HTTPS.
+- **CSP y Excalidraw**: sus fuentes se sirven desde el propio dominio. Excalidraw añade una copia de
+  reserva en esm.sh que la CSP bloquea a propósito (para no descargar nada de terceros); en la consola
+  aparecen esos avisos, sin efecto.
+- **Imágenes**: se construyen en el propio servidor (sin registro de imágenes). La API y el juego llevan
+  los `node_modules` de producción (~750 MB cada una); pnpm incluye herramientas que piden como
+  dependencias opcionales otros paquetes. Si molesta el tamaño, el siguiente paso es empaquetar cada
+  servicio en un solo archivo.
+- **Un solo servidor de juego** basta para el objetivo (100 por espacio). Repartir espacios entre
+  varios procesos (Colyseus con Redis) queda fuera.
+
 ## Editor de mapas (Fase 5)
 
 | Tema             | Decisión                                                                                          |

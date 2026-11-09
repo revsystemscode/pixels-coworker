@@ -1,0 +1,39 @@
+name: Deploy
+
+# Despliegue manual en el servidor de producción (Actions → Deploy → Run workflow).
+# Necesita en el repositorio (Settings → Secrets and variables → Actions):
+#   secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (clave privada) y DEPLOY_KNOWN_HOSTS
+#            (salida de: ssh-keyscan <servidor>)
+#   variable (opcional): DEPLOY_PATH (por defecto /opt/pixels)
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Commit, rama o etiqueta a desplegar
+        default: origin/main
+
+concurrency: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Preparar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Desplegar
+        env:
+          VERSION: ${{ inputs.version }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/pixels' }}
+        run: |
+          # La versión acaba en un comando remoto: solo se aceptan nombres de commit, rama o etiqueta.
+          if ! printf '%s' "$VERSION" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
+            echo "Versión no válida: $VERSION" >&2
+            exit 1
+          fi
+          ssh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "$DEPLOY_PATH/deploy/deploy.sh '$VERSION'"

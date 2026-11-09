@@ -1,0 +1,157 @@
+# Producción en un solo servidor. Desde la carpeta deploy/, con su .env (ver .env.production.example):
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Caddy y LiveKit usan la red del servidor (LiveKit necesita sus puertos UDP y el TURN). La API, el
+# servidor de juego, Postgres y Redis van en la red interna de Docker; la API y el juego solo escuchan
+# en 127.0.0.1 (les llega el tráfico a través de Caddy).
+name: pixels
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
+
+x-app: &app
+  restart: unless-stopped
+  logging: *logging
+  extra_hosts:
+    - 'host.docker.internal:host-gateway'
+
+services:
+  caddy:
+    <<: *app
+    build: { context: .., target: web }
+    network_mode: host
+    environment:
+      DOMAIN: ${DOMAIN:?Falta DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Falta ACME_EMAIL}
+      CADDY_GLOBAL_EXTRA: ${CADDY_GLOBAL_EXTRA:-}
+      CSP_CONNECT_EXTRA: ${CSP_CONNECT_EXTRA:-}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+  api:
+    <<: *app
+    build: { context: .., target: api }
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      API_PORT: 3001
+      DATABASE_URL: postgresql://pixels:${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD}@postgres:5432/pixels
+      REDIS_URL: redis://redis:6379
+      LIVEKIT_URL: http://host.docker.internal:7880
+      LIVEKIT_PUBLIC_URL: wss://rtc.${DOMAIN}
+      API_PUBLIC_URL: https://${DOMAIN}
+      CORS_ORIGIN: https://${DOMAIN}
+      # Solo le llega tráfico desde el propio servidor (Caddy), que pone la IP real.
+      TRUST_PROXY: 'true'
+    ports: ['127.0.0.1:3001:3001']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+  game:
+    <<: *app
+    build: { context: .., target: game-server }
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      GAME_SERVER_PORT: 2567
+      DATABASE_URL: postgresql://pixels:${POSTGRES_PASSWORD}@postgres:5432/pixels
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: https://${DOMAIN}
+    ports: ['127.0.0.1:2567:2567']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+  # Aplica las migraciones pendientes y termina (antes de arrancar la API y el juego).
+  migrate:
+    build: { context: .., target: migrate }
+    environment:
+      DATABASE_URL: postgresql://pixels:${POSTGRES_PASSWORD}@postgres:5432/pixels
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: 'no'
+    logging: *logging
+
+  postgres:
+    image: postgres:17.11-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: pixels
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: pixels
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pixels -d pixels']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:8.6.8-alpine
+    restart: unless-stopped
+    logging: *logging
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  livekit:
+    image: livekit/livekit-server:v1.13.10
+    restart: unless-stopped
+    logging: *logging
+    network_mode: host
+    environment:
+      # Configuración completa aquí (LiveKit la lee de LIVEKIT_CONFIG).
+      LIVEKIT_CONFIG: |
+        port: 7880
+        log_level: info
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          use_external_ip: ${LIVEKIT_USE_EXTERNAL_IP:-true}
+        keys:
+          ${LIVEKIT_API_KEY:?Falta LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET:?Falta LIVEKIT_API_SECRET}
+        turn:
+          enabled: true
+          domain: turn.${DOMAIN}
+          # Caddy termina el TLS en el 443 (turn.DOMINIO) y pasa el tráfico aquí.
+          tls_port: 5349
+          external_tls: true
+          udp_port: 3478
+
+  # Copia de seguridad diaria de Postgres en deploy/backups (se guardan 14 días).
+  backup:
+    image: postgres:17.11-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      PGHOST: postgres
+      PGUSER: pixels
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: pixels
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backups:/backups
+      - ./backup.sh:/backup.sh:ro
+    entrypoint: ['sh', '/backup.sh']
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  redis-data:
