@@ -22,6 +22,7 @@ export function createGameServer({ corsOrigin, ...deps }: GameServerOptions) {
           rooms: rooms.length,
           players: rooms.reduce((sum, room) => sum + room.clients, 0),
           load: load.snapshot(),
+          version: process.env.APP_VERSION ?? 'dev',
         };
         res.set('Access-Control-Allow-Origin', corsOrigin).json(body);
       });

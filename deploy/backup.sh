@@ -7,6 +7,8 @@ while true; do
   if pg_dump --no-owner | gzip > "$file.tmp"; then
     mv "$file.tmp" "$file"
     echo "Copia hecha: $file"
+    # Avisa al monitor de latido: si un día no llega, el monitor alerta.
+    if [ -n "${HEARTBEAT_URL:-}" ]; then wget -q -O /dev/null "$HEARTBEAT_URL" || true; fi
   else
     rm -f "$file.tmp"
     echo "ERROR: no se pudo hacer la copia" >&2

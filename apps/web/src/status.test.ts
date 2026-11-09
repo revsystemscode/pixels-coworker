@@ -13,6 +13,7 @@ describe('toStatusRows', () => {
       rooms: 0,
       players: 0,
       load: { eventLoopP99Ms: 1, rssMb: 100 },
+      version: 'dev',
     });
     expect(rows.find((r) => r.label === 'Servidor de juego')?.status).toBe('up');
     expect(
@@ -26,6 +27,7 @@ describe('toStatusRows', () => {
         service: 'api',
         status: 'up',
         dependencies: { postgres: 'up', redis: 'down', livekit: 'up' },
+        version: 'dev',
       },
       null,
     );

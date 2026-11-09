@@ -25,6 +25,9 @@ export const config = {
   port,
   /** Peticiones por minuto y por IP en toda la API. */
   rateLimitPerMinute: Number(env.API_RATE_LIMIT ?? 600),
+  version: env.APP_VERSION ?? 'dev',
+  /** DSN de Sentry de la web: la API reenvía sus informes (túnel) solo a ese proyecto. */
+  monitoring: { webDsn: env.SENTRY_DSN_WEB ?? null },
   trustProxy: parseTrustProxy(env.TRUST_PROXY),
   corsOrigin: webOrigin,
   databaseUrl: env.DATABASE_URL ?? 'postgresql://pixels:pixels@localhost:5432/pixels',

@@ -17,6 +17,7 @@
     "@colyseus/ws-transport": "^0.18.4",
     "@pixels/db": "workspace:*",
     "@pixels/shared": "workspace:*",
+    "@sentry/node": "11.9.0",
     "express": "^5.3.0",
     "ioredis": "^5.11.1"
   },

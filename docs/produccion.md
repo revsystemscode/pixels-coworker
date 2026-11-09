@@ -92,7 +92,36 @@ gunzip -c backups/pixels-AAAAMMDD-HHMMSS.sql.gz | \
 docker compose -f docker-compose.prod.yml start api game
 ```
 
-## 7. Prueba de humo
+## 7. Monitoreo y alertas
+
+**Errores (Sentry).** Crea dos proyectos en [sentry.io](https://sentry.io) (el plan gratuito basta):
+uno **Node.js** (API y servidor de juego) y uno **Browser/React** (web). Pon sus DSN en `SENTRY_DSN` y
+`SENTRY_DSN_WEB` y vuelve a desplegar (el de la web se usa al compilar). Los errores de la web pasan
+por la API (`/api/monitoring`), así que no hay que tocar la CSP. No se envían datos personales,
+cookies, cabeceras, cuerpos ni la query de las URLs. Cada informe lleva la versión desplegada
+(commit). En Sentry, activa las alertas por correo de «nuevo problema».
+
+**Disponibilidad (monitor externo).** En Better Stack o UptimeRobot (gratis), monitores HTTP cada
+1–3 minutos con alerta por correo:
+
+| Monitor                           | Qué comprueba                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------- |
+| `https://DOMAIN/`                 | La web (200)                                                                          |
+| `https://DOMAIN/api/health/ready` | API y sus dependencias: responde **503** si Postgres, Redis o LiveKit fallan          |
+| `https://DOMAIN/game/health`      | Servidor de juego (200). Incluye la carga: `load.eventLoopP99Ms` (alto = va a saltos) |
+| `https://rtc.DOMAIN`              | LiveKit (200)                                                                         |
+| Certificado de `DOMAIN`           | Que no caduque (los monitores suelen tener esta opción)                               |
+
+**Copias de seguridad.** Crea un monitor de «latido» (heartbeat) que espere un aviso cada 24 h y pon su
+URL en `BACKUP_HEARTBEAT_URL`: si un día no se hace la copia, avisa.
+
+**Logs.** `docker compose -f docker-compose.prod.yml logs -f api` (o `game`, `caddy`, `livekit`). Se
+rotan solos (5 archivos de 10 MB por servicio). La versión desplegada se ve en `/api/health`.
+
+**Espacio en disco.** Las imágenes viejas se borran al desplegar; las copias, a los 14 días. Revisa de
+vez en cuando `df -h` (o activa la alerta de disco del proveedor del servidor).
+
+## 8. Prueba de humo
 
 Desde cualquier equipo con el repositorio (necesita un buzón que reciba el correo de login; con un
 proveedor real, usa una cuenta propia a mano):

@@ -12,6 +12,7 @@ import { registerJoinRoutes } from './join.js';
 import { registerInviteRoutes, registerPublicInviteRoutes } from './invites.js';
 import { registerMeRoutes } from './me.js';
 import { registerMediaRoutes, type MediaOptions } from './media.js';
+import { registerMonitoringRoute } from './monitoring.js';
 import { authenticated } from './session.js';
 import { registerSpaceRoutes } from './spaces.js';
 
@@ -34,6 +35,12 @@ export interface AppOptions {
    * (cabecera X-Forwarded-For). Sin proxy, false: así nadie puede inventarse su IP.
    */
   trustProxy?: boolean | string;
+  /** Errores inesperados (respuestas 500), por ejemplo para Sentry. */
+  onServerError?: (err: unknown) => void;
+  /** Túnel de Sentry para la web (POST /monitoring). */
+  monitoring?: { webDsn: string | null };
+  /** Versión desplegada, para /health. */
+  version?: string;
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -48,8 +55,16 @@ export async function buildApp({
   logger = false,
   rateLimitPerMinute = 600,
   trustProxy = false,
+  onServerError,
+  monitoring = { webDsn: null },
+  version = 'dev',
 }: AppOptions) {
   const app = Fastify({ logger, trustProxy });
+  if (onServerError) {
+    app.addHook('onError', async (_req, reply, err) => {
+      if ((err.statusCode ?? reply.statusCode) >= 500) onServerError(err);
+    });
+  }
   const auth = createAuth(db, authOptions);
 
   // Límite de peticiones por IP: frena abusos y bucles de un cliente roto. El login tiene el suyo
@@ -81,15 +96,23 @@ export async function buildApp({
     }
   });
 
-  app.get('/health', async (): Promise<ApiHealth> => {
+  const health = async (): Promise<ApiHealth> => {
     const [postgres, redis, livekit] = await Promise.all([
       healthChecks.postgres(),
       healthChecks.redis(),
       healthChecks.livekit(),
     ]);
     // La API en sí está viva aunque alguna dependencia no lo esté.
-    return { service: 'api', status: 'up', dependencies: { postgres, redis, livekit } };
+    return { service: 'api', status: 'up', dependencies: { postgres, redis, livekit }, version };
+  };
+  app.get('/health', health);
+  // Para los monitores de disponibilidad: 503 si algo de lo que depende está caído.
+  app.get('/health/ready', async (_req, reply) => {
+    const body = await health();
+    const down = Object.values(body.dependencies).includes('down');
+    return reply.code(down ? 503 : 200).send(body);
   });
+  registerMonitoringRoute(app, monitoring.webDsn);
 
   registerAuthRoutes(app, auth, { baseURL: authOptions.baseURL, google: !!authOptions.google });
   registerMediaRoutes(app, media);

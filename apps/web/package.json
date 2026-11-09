@@ -15,6 +15,7 @@
     "@colyseus/sdk": "^0.18.9",
     "@excalidraw/excalidraw": "0.18.1",
     "@pixels/shared": "workspace:*",
+    "@sentry/react": "11.9.0",
     "better-auth": "1.7.18",
     "livekit-client": "^2.23.0",
     "phaser": "^3.90.0",

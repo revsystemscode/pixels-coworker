@@ -1,3 +1,4 @@
+import { reportError, sentryEnabled } from './instrument.js';
 import { createDb } from '@pixels/db';
 import { buildApp } from './app.js';
 import { config } from './config.js';
@@ -7,7 +8,7 @@ import { createSmtpMailer } from './mail.js';
 
 const db = createDb(config.databaseUrl);
 const events = createRedisPublisher(config.redisUrl, (err) =>
-  console.error('Redis (eventos de espacios):', err),
+  reportError('Redis (eventos de espacios)', err),
 );
 
 const app = await buildApp({
@@ -20,6 +21,11 @@ const app = await buildApp({
   logger: true,
   rateLimitPerMinute: config.rateLimitPerMinute,
   trustProxy: config.trustProxy,
+  ...(sentryEnabled
+    ? { onServerError: (err: unknown) => reportError('Error en la API', err) }
+    : {}),
+  monitoring: config.monitoring,
+  version: config.version,
 });
 
 await app.listen({ port: config.port, host: '0.0.0.0' });

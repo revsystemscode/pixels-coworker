@@ -1,3 +1,4 @@
+import { reportError } from './instrument.js';
 import { createDb } from '@pixels/db';
 import { config } from './config.js';
 import { subscribeSpaceEvents } from './events.js';
@@ -11,10 +12,10 @@ const server = createGameServer({
   store: createDbSpaceStore(db),
   ticketSecret: config.ticketSecret,
   maxClients: config.roomMaxClients,
-  onError: (message, err) => console.error(message, err),
+  onError: reportError,
 });
 const unsubscribe = subscribeSpaceEvents(config.redisUrl, handleSpaceEvent, (err) =>
-  console.error('Redis (eventos de espacios):', err),
+  reportError('Redis (eventos de espacios)', err),
 );
 
 await server.listen(config.port, '0.0.0.0');

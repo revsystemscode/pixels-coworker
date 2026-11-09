@@ -13,12 +13,17 @@ WORKDIR /repo
 FROM base AS build
 COPY . .
 RUN pnpm install --frozen-lockfile
-# La web usa direcciones relativas: la misma compilación vale para cualquier dominio.
-ENV VITE_API_URL=/api VITE_GAME_SERVER_URL=/game VITE_AUTH_URL=
+# La web usa direcciones relativas: la misma compilación vale para cualquier dominio. La versión
+# (commit) y el DSN de Sentry de la web llegan como argumentos (deploy/docker-compose.prod.yml).
+ARG APP_VERSION=dev
+ARG VITE_SENTRY_DSN=
+ENV VITE_API_URL=/api VITE_GAME_SERVER_URL=/game VITE_AUTH_URL= \
+  VITE_APP_VERSION=$APP_VERSION VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 RUN pnpm turbo run build --filter=@pixels/api --filter=@pixels/game-server --filter=@pixels/web
 
 FROM node:24.22.2-alpine AS runtime
-ENV NODE_ENV=production
+ARG APP_VERSION=dev
+ENV NODE_ENV=production APP_VERSION=$APP_VERSION
 WORKDIR /repo
 USER node
 

@@ -13,6 +13,9 @@ echo "Desplegando $(git log -1 --format='%h %s')"
 
 cd deploy
 . ./.env
+# La versión (commit) llega a las imágenes: /health y Sentry la muestran.
+APP_VERSION="$(git rev-parse --short HEAD)"
+export APP_VERSION
 docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 docker image prune -f >/dev/null
 

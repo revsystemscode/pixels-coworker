@@ -9,6 +9,8 @@ export interface ApiHealth {
     redis: ServiceStatus;
     livekit: ServiceStatus;
   };
+  /** Versión desplegada (commit) o «dev». */
+  version: string;
 }
 
 /** Respuesta de GET /health en el servidor de juego. */
@@ -22,4 +24,5 @@ export interface GameServerHealth {
     eventLoopP99Ms: number;
     rssMb: number;
   };
+  version: string;
 }

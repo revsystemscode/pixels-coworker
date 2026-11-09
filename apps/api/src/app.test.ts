@@ -19,6 +19,7 @@ describe('GET /health', () => {
       service: 'api',
       status: 'up',
       dependencies: { postgres: 'up', redis: 'down', livekit: 'up' },
+      version: 'dev',
     });
     await app.close();
   });
