@@ -1,4 +1,5 @@
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import type { Db } from '@pixels/db';
 import type { ApiHealth } from '@pixels/shared';
@@ -23,6 +24,16 @@ export interface AppOptions {
   /** Avisa al servidor de juego de expulsiones y espacios borrados. */
   publish: PublishSpaceEvent;
   logger?: boolean;
+  /**
+   * Peticiones por minuto y por IP (en toda la API). Algunas rutas tienen su propio límite. null lo
+   * apaga (pruebas que no tratan de esto).
+   */
+  rateLimitPerMinute?: number | null;
+  /**
+   * Si la API va detrás de un proxy (Caddy en producción), de quién fiarse para saber la IP real
+   * (cabecera X-Forwarded-For). Sin proxy, false: así nadie puede inventarse su IP.
+   */
+  trustProxy?: boolean | string;
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -35,9 +46,24 @@ export async function buildApp({
   auth: authOptions,
   publish,
   logger = false,
+  rateLimitPerMinute = 600,
+  trustProxy = false,
 }: AppOptions) {
-  const app = Fastify({ logger });
+  const app = Fastify({ logger, trustProxy });
   const auth = createAuth(db, authOptions);
+
+  // Límite de peticiones por IP: frena abusos y bucles de un cliente roto. El login tiene el suyo
+  // (Better Auth) y algunas rutas, uno más estricto (config.rateLimit en cada ruta).
+  if (rateLimitPerMinute !== null) {
+    await app.register(rateLimit, {
+      max: rateLimitPerMinute,
+      timeWindow: 60_000,
+      errorResponseBuilder: (_req, context) => ({
+        statusCode: context.statusCode,
+        error: 'Demasiadas peticiones seguidas. Espera un momento y vuelve a intentarlo.',
+      }),
+    });
+  }
 
   // La sesión va en una cookie: el navegador la envía solo con `credentials: 'include'`.
   await app.register(cors, {

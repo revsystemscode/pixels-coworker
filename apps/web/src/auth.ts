@@ -6,7 +6,7 @@ import { ApiRequestError, api } from './api.js';
 import { env } from './env.js';
 
 export const authClient = createAuthClient({
-  baseURL: env.apiUrl,
+  baseURL: env.authUrl,
   plugins: [magicLinkClient()],
   fetchOptions: { credentials: 'include' },
 });

@@ -47,31 +47,35 @@ export function registerSpaceRoutes(app: FastifyInstance, db: Db, publish: Publi
     return memberships.map((m) => ({ id: m.spaceId, name: m.space.name, role: toRole(m.role) }));
   });
 
-  app.post('/spaces', async (req, reply) => {
-    const name = parseSpaceName((req.body as { name?: unknown } | null)?.name);
-    if (!name) return reply.code(400).send({ error: 'Ponle un nombre al espacio' });
+  app.post(
+    '/spaces',
+    { config: { rateLimit: { max: 10, timeWindow: 60_000 } } },
+    async (req, reply) => {
+      const name = parseSpaceName((req.body as { name?: unknown } | null)?.name);
+      if (!name) return reply.code(400).send({ error: 'Ponle un nombre al espacio' });
 
-    const owned = await db.membership.count({ where: { userId: req.user.id, role: 'OWNER' } });
-    if (owned >= MAX_OWNED_SPACES) {
-      return reply
-        .code(409)
-        .send({ error: `Ya tienes ${MAX_OWNED_SPACES} espacios. Borra alguno para crear otro.` });
-    }
+      const owned = await db.membership.count({ where: { userId: req.user.id, role: 'OWNER' } });
+      if (owned >= MAX_OWNED_SPACES) {
+        return reply
+          .code(409)
+          .send({ error: `Ya tienes ${MAX_OWNED_SPACES} espacios. Borra alguno para crear otro.` });
+      }
 
-    // Cada espacio tiene su propia copia del mapa (para poder editarlo en el futuro).
-    const space = await db.space.create({
-      data: {
-        name,
-        map: {
-          create: { name: 'Oficina', template: DEFAULT_MAP, data: MAPS[DEFAULT_MAP] as object },
+      // Cada espacio tiene su propia copia del mapa (para poder editarlo en el futuro).
+      const space = await db.space.create({
+        data: {
+          name,
+          map: {
+            create: { name: 'Oficina', template: DEFAULT_MAP, data: MAPS[DEFAULT_MAP] as object },
+          },
+          memberships: { create: { userId: req.user.id, role: 'OWNER' } },
         },
-        memberships: { create: { userId: req.user.id, role: 'OWNER' } },
-      },
-    });
-    return reply
-      .code(201)
-      .send({ id: space.id, name: space.name, role: 'owner' } satisfies SpaceSummary);
-  });
+      });
+      return reply
+        .code(201)
+        .send({ id: space.id, name: space.name, role: 'owner' } satisfies SpaceSummary);
+    },
+  );
 
   app.get<SpaceParams>('/spaces/:spaceId', async (req, reply) => {
     const membership = await db.membership.findUnique({

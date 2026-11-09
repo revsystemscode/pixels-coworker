@@ -88,32 +88,36 @@ export function registerInviteRoutes(
     return invites.map(toInvite);
   });
 
-  app.post<SpaceParams>('/spaces/:spaceId/invites', async (req, reply) => {
-    const { spaceId } = req.params;
-    const role = await roleIn(db, spaceId, req.user.id);
-    if (!role) return notFound(reply);
-    if (!can.manageInvites(role)) return forbidden(reply);
+  app.post<SpaceParams>(
+    '/spaces/:spaceId/invites',
+    { config: { rateLimit: { max: 30, timeWindow: 60_000 } } },
+    async (req, reply) => {
+      const { spaceId } = req.params;
+      const role = await roleIn(db, spaceId, req.user.id);
+      if (!role) return notFound(reply);
+      if (!can.manageInvites(role)) return forbidden(reply);
 
-    const body = (req.body ?? {}) as { role?: unknown; days?: unknown };
-    if (!isInviteRole(body.role)) return reply.code(400).send({ error: 'Rol no válido' });
-    const days = body.days ?? INVITE_DEFAULT_DAYS;
-    if (!Number.isInteger(days) || (days as number) < 1 || (days as number) > INVITE_MAX_DAYS) {
-      return reply.code(400).send({ error: `La invitación dura de 1 a ${INVITE_MAX_DAYS} días` });
-    }
+      const body = (req.body ?? {}) as { role?: unknown; days?: unknown };
+      if (!isInviteRole(body.role)) return reply.code(400).send({ error: 'Rol no válido' });
+      const days = body.days ?? INVITE_DEFAULT_DAYS;
+      if (!Number.isInteger(days) || (days as number) < 1 || (days as number) > INVITE_MAX_DAYS) {
+        return reply.code(400).send({ error: `La invitación dura de 1 a ${INVITE_MAX_DAYS} días` });
+      }
 
-    const token = newToken();
-    const invite = await db.invite.create({
-      data: {
-        spaceId,
-        tokenHash: hashToken(token),
-        role: toDbRole(body.role),
-        createdById: req.user.id,
-        expiresAt: new Date(now().getTime() + (days as number) * DAY_MS),
-      },
-      include: { createdBy: { select: { name: true } } },
-    });
-    return reply.code(201).send({ ...toInvite(invite), token } satisfies CreatedInvite);
-  });
+      const token = newToken();
+      const invite = await db.invite.create({
+        data: {
+          spaceId,
+          tokenHash: hashToken(token),
+          role: toDbRole(body.role),
+          createdById: req.user.id,
+          expiresAt: new Date(now().getTime() + (days as number) * DAY_MS),
+        },
+        include: { createdBy: { select: { name: true } } },
+      });
+      return reply.code(201).send({ ...toInvite(invite), token } satisfies CreatedInvite);
+    },
+  );
 
   app.delete<{ Params: { spaceId: string; inviteId: string } }>(
     '/spaces/:spaceId/invites/:inviteId',
@@ -131,22 +135,26 @@ export function registerInviteRoutes(
     },
   );
 
-  app.post<TokenParams>('/invites/:token/accept', async (req, reply) => {
-    const invite = await findActiveInvite(db, req.params.token, now());
-    if (!invite) return reply.code(404).send({ error: 'La invitación no existe o ha caducado' });
-    const spaceId = invite.space.id;
+  app.post<TokenParams>(
+    '/invites/:token/accept',
+    { config: { rateLimit: { max: 20, timeWindow: 60_000 } } },
+    async (req, reply) => {
+      const invite = await findActiveInvite(db, req.params.token, now());
+      if (!invite) return reply.code(404).send({ error: 'La invitación no existe o ha caducado' });
+      const spaceId = invite.space.id;
 
-    // Si ya es miembro no se toca su rol (un enlace de invitado no degrada a un admin).
-    // `skipDuplicates` evita el error si se acepta dos veces a la vez.
-    await db.$transaction(async (tx) => {
-      const { count } = await tx.membership.createMany({
-        data: [{ spaceId, userId: req.user.id, role: invite.role }],
-        skipDuplicates: true,
+      // Si ya es miembro no se toca su rol (un enlace de invitado no degrada a un admin).
+      // `skipDuplicates` evita el error si se acepta dos veces a la vez.
+      await db.$transaction(async (tx) => {
+        const { count } = await tx.membership.createMany({
+          data: [{ spaceId, userId: req.user.id, role: invite.role }],
+          skipDuplicates: true,
+        });
+        if (count) {
+          await tx.invite.update({ where: { id: invite.id }, data: { uses: { increment: 1 } } });
+        }
       });
-      if (count) {
-        await tx.invite.update({ where: { id: invite.id }, data: { uses: { increment: 1 } } });
-      }
-    });
-    return { spaceId } satisfies AcceptInviteResponse;
-  });
+      return { spaceId } satisfies AcceptInviteResponse;
+    },
+  );
 }

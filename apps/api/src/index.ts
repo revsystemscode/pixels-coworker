@@ -18,6 +18,8 @@ const app = await buildApp({
   auth: { ...config.auth, mailer: createSmtpMailer(config.mail.smtpUrl, config.mail.from) },
   publish: events.publish,
   logger: true,
+  rateLimitPerMinute: config.rateLimitPerMinute,
+  trustProxy: config.trustProxy,
 });
 
 await app.listen({ port: config.port, host: '0.0.0.0' });

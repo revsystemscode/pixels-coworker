@@ -54,7 +54,8 @@ export function registerEditorRoutes(app: FastifyInstance, db: Db, publish: Publ
 
   app.put<SpaceParams>(
     '/spaces/:spaceId/editor/draft',
-    { bodyLimit: MAP_BODY_LIMIT },
+    // El editor guarda solo, como mucho cada segundo y medio.
+    { bodyLimit: MAP_BODY_LIMIT, config: { rateLimit: { max: 60, timeWindow: 60_000 } } },
     async (req, reply) => {
       const { spaceId } = req.params;
       if (!(await allowed(spaceId, req.user.id, reply))) return reply;
@@ -78,31 +79,35 @@ export function registerEditorRoutes(app: FastifyInstance, db: Db, publish: Publ
     return reply.code(204).send();
   });
 
-  app.post<SpaceParams>('/spaces/:spaceId/editor/publish', async (req, reply) => {
-    const { spaceId } = req.params;
-    if (!(await allowed(spaceId, req.user.id, reply))) return reply;
-    const space = await db.space.findUniqueOrThrow({
-      where: { id: spaceId },
-      select: { mapId: true, mapDraft: true },
-    });
-    if (!space.mapDraft) return reply.code(409).send({ error: 'No hay cambios que publicar.' });
-    // Se vuelve a validar por si las reglas cambiaron desde que se guardó.
-    const parsed = parseTiledForEditing(space.mapDraft.data);
-    if (!parsed.ok) return reply.code(400).send({ error: parsed.error });
+  app.post<SpaceParams>(
+    '/spaces/:spaceId/editor/publish',
+    { config: { rateLimit: { max: 10, timeWindow: 60_000 } } },
+    async (req, reply) => {
+      const { spaceId } = req.params;
+      if (!(await allowed(spaceId, req.user.id, reply))) return reply;
+      const space = await db.space.findUniqueOrThrow({
+        where: { id: spaceId },
+        select: { mapId: true, mapDraft: true },
+      });
+      if (!space.mapDraft) return reply.code(409).send({ error: 'No hay cambios que publicar.' });
+      // Se vuelve a validar por si las reglas cambiaron desde que se guardó.
+      const parsed = parseTiledForEditing(space.mapDraft.data);
+      if (!parsed.ok) return reply.code(400).send({ error: parsed.error });
 
-    const boards = parsed.map.whiteboards.map((b) => `board-${b.id}`);
-    const objects = parsed.map.objects.map((o) => `obj-${o.id}`);
-    const [map] = await db.$transaction([
-      db.map.update({
-        where: { id: space.mapId },
-        data: { data: toTiled(parsed.map) as unknown as object },
-      }),
-      db.mapDraft.delete({ where: { spaceId } }),
-      // Lo dibujado o escrito en pizarras y objetos que ya no están en el mapa se borra.
-      db.whiteboard.deleteMany({ where: { spaceId, boardId: { notIn: boards } } }),
-      db.spaceObject.deleteMany({ where: { spaceId, objectId: { notIn: objects } } }),
-    ]);
-    publish({ type: 'map-updated', spaceId });
-    return { mapVersion: map.updatedAt.toISOString() } satisfies PublishMapResponse;
-  });
+      const boards = parsed.map.whiteboards.map((b) => `board-${b.id}`);
+      const objects = parsed.map.objects.map((o) => `obj-${o.id}`);
+      const [map] = await db.$transaction([
+        db.map.update({
+          where: { id: space.mapId },
+          data: { data: toTiled(parsed.map) as unknown as object },
+        }),
+        db.mapDraft.delete({ where: { spaceId } }),
+        // Lo dibujado o escrito en pizarras y objetos que ya no están en el mapa se borra.
+        db.whiteboard.deleteMany({ where: { spaceId, boardId: { notIn: boards } } }),
+        db.spaceObject.deleteMany({ where: { spaceId, objectId: { notIn: objects } } }),
+      ]);
+      publish({ type: 'map-updated', spaceId });
+      return { mapVersion: map.updatedAt.toISOString() } satisfies PublishMapResponse;
+    },
+  );
 }

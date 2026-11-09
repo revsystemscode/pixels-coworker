@@ -58,6 +58,8 @@ export async function createTestApp({
       },
     },
     publish: (event) => events.push(event),
+    // Sin límite de peticiones salvo en las pruebas que lo comprueban (security.test.ts).
+    rateLimitPerMinute: null,
     ...overrides,
   });
   return { app, mails, events, db: testDb() };

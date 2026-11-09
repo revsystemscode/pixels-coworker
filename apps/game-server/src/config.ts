@@ -19,6 +19,16 @@ export const config = {
   ticketSecret: process.env.TICKET_SECRET ?? DEV_TICKET_SECRET,
 };
 
-if (process.env.NODE_ENV === 'production' && config.ticketSecret === DEV_TICKET_SECRET) {
-  throw new Error('Falta TICKET_SECRET en producción');
+if (process.env.NODE_ENV === 'production') {
+  const problems: string[] = [];
+  if (config.ticketSecret === DEV_TICKET_SECRET || config.ticketSecret.length < 32) {
+    problems.push('TICKET_SECRET debe ser largo y aleatorio (el mismo que en la API)');
+  }
+  for (const key of ['DATABASE_URL', 'REDIS_URL', 'CORS_ORIGIN']) {
+    if (!process.env[key]) problems.push(`falta ${key}`);
+  }
+  if (!config.corsOrigin.startsWith('https://'))
+    problems.push('CORS_ORIGIN debe empezar por https://');
+  if (problems.length)
+    throw new Error(`Configuración de producción no válida: ${problems.join('; ')}`);
 }
