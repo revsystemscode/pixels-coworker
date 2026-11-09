@@ -134,13 +134,17 @@ export async function enterSpace(page: Page, { camera = false }: { camera?: bool
 export async function joinAs(
   name: string,
   avatar = 1,
-  { camera = false, colors = {} }: { camera?: boolean; colors?: LookColors } = {},
+  {
+    camera = false,
+    colors = {},
+    spaceName = `Prueba ${Date.now()}`,
+  }: { camera?: boolean; colors?: LookColors; spaceName?: string } = {},
 ): Promise<Page> {
   const page = await newBrowserPage();
   if (!current) {
     await signIn(page, uniqueEmail(name));
     await completeProfile(page, name, avatar, colors);
-    const spaceId = await createSpace(page, `Prueba ${Date.now()}`);
+    const spaceId = await createSpace(page, spaceName);
     // page.request comparte las cookies de la página: la petición va con la sesión.
     const res = await page.request.post(`${API_URL}/spaces/${spaceId}/invites`, {
       data: { role: 'member', days: 1 },

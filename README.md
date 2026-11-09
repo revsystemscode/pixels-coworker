@@ -2,7 +2,25 @@
 
 Plataforma web de reuniones en un mundo 2D (vista cenital, pixel art) con video y audio por proximidad.
 
-Estado: **fases 0–5 completas** (MVP, pizarra, interactividad y editor de mapas). Ver [`docs/decisiones.md`](./docs/decisiones.md).
+Estado: **fases 0–5 completas** y **producción preparada** (Fase 6: falta desplegar en el servidor definitivo). Ver [`docs/decisiones.md`](./docs/decisiones.md).
+
+## Capturas
+
+![Tres personas en la oficina: video por proximidad, chat, una reacción y una mano levantada](docs/screenshots/oficina.png)
+
+_La oficina: quien está cerca se ve y se oye (burbujas de video), chat de la sala, reacciones (🎉) y
+mano levantada (✋)._
+
+| Pizarra colaborativa (Excalidraw)                                                    | Tres en raya en la mesa de juegos                                                       |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| ![Pizarra con formas y texto, con dos personas dentro](docs/screenshots/pizarra.png) | ![Partida de tres en raya; una tercera persona mira](docs/screenshots/tres-en-raya.png) |
+| **Objetos del mapa: tablón de anuncios**                                             | **Editor de mapas**                                                                     |
+| ![Panel de una nota abierta junto al tablón](docs/screenshots/nota.png)              | ![Editor de mapas con la paleta de muebles](docs/screenshots/editor.png)                |
+
+<p align="center"><img src="docs/screenshots/avatar.png" alt="Elegir personaje y colores de camiseta, pelo y piel" width="360"></p>
+
+Las capturas se generan con `SCREENSHOTS=1 pnpm --filter @pixels/web e2e screenshots` (servicios y
+apps en marcha).
 
 ## Requisitos
 
