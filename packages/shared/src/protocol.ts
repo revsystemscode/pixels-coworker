@@ -59,6 +59,8 @@ export const ServerMessage = {
   ObjectError: 'object-error',
   /** Mi rol en el espacio ha cambiado. */
   RoleChanged: 'role-changed',
+  /** Se ha publicado un mapa nuevo: hay que descargarlo y redibujar (sin salir de la sala). */
+  MapChanged: 'map-changed',
   /** Estado de la mesa de juego abierta. Ver tictactoe.ts. */
   GameState: 'game-state',
   GameError: 'game-error',

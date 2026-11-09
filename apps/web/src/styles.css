@@ -1213,6 +1213,22 @@ video.mirror {
   color: var(--muted);
 }
 
+/* --- Aviso de mapa actualizado --- */
+
+.map-notice {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgb(26 32 44 / 0.95);
+  border: 1px solid var(--accent);
+  font-size: 0.9rem;
+  z-index: 25;
+}
+
 /* --- Pizarra --- */
 
 .board-prompt {

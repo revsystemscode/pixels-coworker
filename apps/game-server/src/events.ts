@@ -5,7 +5,7 @@ const isSpaceEvent = (value: unknown): value is SpaceEvent => {
   if (typeof value !== 'object' || value === null) return false;
   const e = value as Record<string, unknown>;
   if (typeof e.spaceId !== 'string') return false;
-  if (e.type === 'space-deleted') return true;
+  if (e.type === 'space-deleted' || e.type === 'map-updated') return true;
   if (typeof e.userId !== 'string') return false;
   return e.type === 'member-removed' || (e.type === 'role-changed' && isRole(e.role));
 };

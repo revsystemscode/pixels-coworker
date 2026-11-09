@@ -17,6 +17,7 @@ export function WorldScreen({ room, map }: { room: Room; map: TiledMap }) {
   const navigate = useNavigate();
   const selfName = useApp((s) => s.selfName);
   const space = useApp((s) => s.space);
+  const mapNotice = useApp((s) => s.mapNotice);
   const [panelOpen, setPanelOpen] = useState(false);
   return (
     <div className="world">
@@ -31,6 +32,11 @@ export function WorldScreen({ room, map }: { room: Room; map: TiledMap }) {
         </button>
         <ZoneBadge />
       </header>
+      {mapNotice && (
+        <p className="map-notice" role="status">
+          {mapNotice}
+        </p>
+      )}
       <ScreenShares />
       <MediaControls />
       <p className="hint">Muévete con las flechas, WASD o con clic. Reacciones: 1–6. Mano: H.</p>

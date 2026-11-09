@@ -14,6 +14,7 @@ import {
   canEditObjects,
   distanceToRect,
   isWithinReach,
+  nearestWalkable,
   parseGameMove,
   parseGameOpen,
   isWalkable,
@@ -93,6 +94,7 @@ export function handleSpaceEvent(event: SpaceEvent) {
   const room = roomsBySpace.get(event.spaceId);
   if (!room) return;
   if (event.type === 'space-deleted') room.closeDeleted();
+  else if (event.type === 'map-updated') void room.reloadMap();
   else if (event.type === 'role-changed') room.changeRole(event.userId, event.role);
   else room.removeUser(event.userId);
 }
@@ -280,6 +282,73 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     for (const client of this.clients) {
       if (this.users.get(client.sessionId) === userId) client.leave(LeaveCode.Removed);
     }
+  }
+
+  /**
+   * Se publicó un mapa nuevo: se usa desde ya, sin sacar a nadie. Quien queda sobre una casilla
+   * bloqueada pasa a la libre más cercana, y se cierran las pizarras y mesas que ya no están (o que
+   * quedaron lejos). Los clientes descargan el mapa y lo redibujan.
+   */
+  async reloadMap() {
+    let next: WorldMap;
+    let saved: Record<string, string>;
+    try {
+      const tiled = await this.deps.store.loadMap(this.spaceId);
+      if (!tiled) return;
+      next = parseWorldMap(tiled);
+      saved = await this.deps.store.loadObjects(this.spaceId);
+    } catch (err) {
+      this.deps.onError?.('No se pudo cargar el mapa nuevo', err);
+      return;
+    }
+    this.map = next;
+
+    const values = new Map<string, string>();
+    for (const o of next.objects) {
+      if (EDITABLE_KINDS.includes(o.kind)) values.set(o.id, saved[o.id] ?? o.initial);
+    }
+    this.objectValues = values;
+
+    for (const player of this.state.players.values()) {
+      if (isWalkable(next, player.x, player.y)) continue;
+      const to = nearestWalkable(next, player) ?? next.spawn;
+      player.x = to.x;
+      player.y = to.y;
+    }
+
+    for (const client of this.clients) {
+      const player = this.state.players.get(client.sessionId);
+      const boardId = this.openBoards.get(client.sessionId);
+      if (boardId && (!player || !this.isNearBoard(player, boardId))) {
+        this.closeBoard(client.sessionId);
+        this.sendBoardError(
+          client,
+          boardId,
+          'El mapa ha cambiado: la pizarra ya no está aquí.',
+          true,
+        );
+      }
+      const gameId = this.openGames.get(client.sessionId);
+      const table = next.objects.find((o) => o.id === gameId && o.kind === 'game');
+      if (gameId && (!player || !table || !isWithinReach(player, table))) {
+        this.closeGame(client.sessionId);
+        this.sendGameError(client, gameId, 'El mapa ha cambiado: la mesa ya no está aquí.', true);
+      }
+    }
+    // Lo cargado de pizarras que ya no existen se olvida (la API ya borró su contenido).
+    for (const [boardId, doc] of this.boards) {
+      if (next.whiteboards.some((b) => b.id === boardId)) continue;
+      this.boards.delete(boardId);
+      void doc.then(
+        (d) => clearTimeout(d.saveTimer),
+        () => {},
+      );
+    }
+
+    this.broadcast(ServerMessage.MapChanged, {});
+    this.broadcast(ServerMessage.ObjectContents, {
+      contents: Object.fromEntries(this.objectValues),
+    } satisfies ObjectContentsMessage);
   }
 
   /** La API cambió el rol de una cuenta: vale desde ya (y su interfaz se entera). */

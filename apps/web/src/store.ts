@@ -35,6 +35,8 @@ interface AppState {
   selfName: string;
   media: MediaSession | null;
   messages: ChatEntry[];
+  /** Aviso breve sobre el mapa (por ejemplo, «Se ha actualizado el mapa»). */
+  mapNotice: string | null;
   join: (spaceId: string, selfName: string) => Promise<void>;
   leave: () => Promise<void>;
   sendChat: (text: string) => void;
@@ -60,6 +62,41 @@ async function loadMap(spaceId: string, version: string) {
   return map;
 }
 
+const MAP_NOTICE_MS = 4_000;
+let mapNoticeTimer: number | undefined;
+function showMapNotice(mapNotice: string) {
+  window.clearTimeout(mapNoticeTimer);
+  useApp.setState({ mapNotice });
+  mapNoticeTimer = window.setTimeout(() => useApp.setState({ mapNotice: null }), MAP_NOTICE_MS);
+}
+
+/**
+ * Se publicó un mapa nuevo: se descarga y se redibuja sin salir de la sala (el juego se vuelve a
+ * montar con el mapa nuevo; el video sigue). Las zonas privadas del audio también cambian.
+ */
+async function reloadMap(room: Room, spaceId: string) {
+  let tiled: TiledMap;
+  try {
+    tiled = await api<TiledMap>('GET', `/spaces/${spaceId}/map`);
+  } catch {
+    showMapNotice('Se cambió el mapa, pero no se pudo cargar. Sal y vuelve a entrar.');
+    return;
+  }
+  if (useApp.getState().room !== room) return;
+  const world = parseWorldMap(tiled);
+  for (const key of mapCache.keys()) if (key.startsWith(`${spaceId}@`)) mapCache.delete(key);
+  // Un objeto abierto que ya no está (o se movió) se cierra o se actualiza.
+  const open = useObjects.getState().open;
+  if (open) {
+    const moved = world.objects.find((o) => o.id === open.id);
+    if (moved) useObjects.setState({ open: moved });
+    else useObjects.getState().close('El mapa ha cambiado.');
+  }
+  useApp.getState().media?.setWorld(world);
+  useApp.setState({ map: tiled });
+  showMapNotice('Se ha actualizado el mapa.');
+}
+
 export const useApp = create<AppState>((set, get) => ({
   phase: 'idle',
   error: null,
@@ -69,6 +106,7 @@ export const useApp = create<AppState>((set, get) => ({
   selfName: '',
   media: null,
   messages: [],
+  mapNotice: null,
 
   join: async (spaceId, selfName) => {
     set({ phase: 'connecting', error: null, messages: [], selfName });
@@ -91,6 +129,7 @@ export const useApp = create<AppState>((set, get) => ({
         room.onMessage(ServerMessage.MediaTicket, (m: MediaTicketMessage) => resolve(m.ticket)),
       );
       bindObjects(room);
+      room.onMessage(ServerMessage.MapChanged, () => void reloadMap(room, spaceId));
       bindGames(room);
       room.onMessage(ServerMessage.RoleChanged, ({ role }: RoleChangedMessage) => {
         const space = get().space;

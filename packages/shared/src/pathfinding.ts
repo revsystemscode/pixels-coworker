@@ -3,6 +3,33 @@ import { isWalkable, type WorldMap } from './map.js';
 import type { Point } from './tiles.js';
 
 /**
+ * Casilla libre más cercana a `p` (ella misma si está libre), sin importar las paredes de en medio.
+ * Sirve para recolocar a alguien si cambian el mapa bajo sus pies. Null si no hay ninguna libre.
+ */
+export function nearestWalkable(map: WorldMap, p: Point): Point | null {
+  const { width, height } = map;
+  const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < width && y < height;
+  const start = {
+    x: Math.min(Math.max(p.x, 0), width - 1),
+    y: Math.min(Math.max(p.y, 0), height - 1),
+  };
+  const seen = new Uint8Array(width * height);
+  const queue: Point[] = [start];
+  seen[start.y * width + start.x] = 1;
+  for (let i = 0; i < queue.length; i++) {
+    const c = queue[i]!;
+    if (isWalkable(map, c.x, c.y)) return c;
+    for (const dir of DIRECTIONS) {
+      const n = { x: c.x + DIRECTION_DELTA[dir].x, y: c.y + DIRECTION_DELTA[dir].y };
+      if (!inside(n.x, n.y) || seen[n.y * width + n.x]) continue;
+      seen[n.y * width + n.x] = 1;
+      queue.push(n);
+    }
+  }
+  return null;
+}
+
+/**
  * Camino más corto entre dos casillas (búsqueda en anchura sobre la cuadrícula de 4 direcciones).
  * Devuelve la lista de pasos, [] si ya estás en el destino, o null si no se puede llegar.
  */

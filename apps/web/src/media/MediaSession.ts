@@ -51,9 +51,15 @@ export class MediaSession {
 
   constructor(
     private readonly game: GameRoom,
-    private readonly world: WorldMap,
+    private world: WorldMap,
     private readonly ticket: Promise<string>,
   ) {}
+
+  /** Se publicó un mapa nuevo: las zonas privadas pueden haber cambiado. */
+  setWorld(world: WorldMap) {
+    this.world = world;
+    if (!this.stopped && this.timer !== undefined) this.updateProximity();
+  }
 
   async start(preview: { camera: LocalVideoTrack | null; microphone: LocalAudioTrack | null }) {
     useMedia.setState({ status: 'connecting', error: null });
