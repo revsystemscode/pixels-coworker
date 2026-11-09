@@ -2,6 +2,38 @@
 
 Registro breve de decisiones de producto y de arquitectura. Lo más reciente, arriba.
 
+## Editor de mapas (Fase 5)
+
+| Tema             | Decisión                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| Alcance          | **Editor completo en el navegador** (canvas 2D propio), más importar y exportar Tiled JSON        |
+| Quién edita      | **Dueño y admins**                                                                                |
+| Cómo se aplica   | **Borrador** que se guarda solo y botón **Publicar**, que cambia el mapa en caliente              |
+| Paleta           | ~60 piezas elegidas de los packs de Kenney, ya marcadas como «bloquea» o no. Dos estilos de pared |
+| Tamaño           | De 8 a 100 casillas de lado                                                                       |
+| Fuera de alcance | Subir arte o tilesets propios, historial de versiones, editar entre varias personas, móvil        |
+
+- **Un solo formato**: el editor lee Tiled JSON (`parseTiledForEditing`, que también valida lo que se
+  importa) y escribe el mismo formato que `tools/build-office-map.mjs`. La oficina sale idéntica al
+  leerla y escribirla (hay una prueba), así que los mapas viejos y los nuevos son iguales.
+- **Paredes automáticas**: se guarda qué casillas son pared y de qué estilo; la parte de arriba se elige
+  según las vecinas y debajo de cada pared horizontal se ponen dos filas de cara (la misma lógica que el
+  script de la oficina, ahora compartida). Los tiles puestos a mano en la capa de paredes se respetan.
+- **Colisión calculada**: al pintar, cada casilla bloquea si tiene pared o un mueble que bloquea. Los
+  tiles que no están en la paleta (de un mapa importado) conservan su colisión, y hay pinceles para
+  bloquear o desbloquear a mano.
+- **Borrador aparte** (tabla `map_drafts`): guardarlo no cambia la versión del mapa publicado, así que
+  nadie lo vuelve a descargar hasta que se publica.
+- **Publicar en caliente**: la API guarda el mapa, borra el contenido de pizarras y objetos que ya no
+  están y avisa al servidor de juego por Redis (`map-updated`). La sala usa el mapa nuevo al momento,
+  recoloca a quien quedó sobre una casilla bloqueada y cierra pizarras y mesas que ya no existen. La web
+  vuelve a montar el juego con el mapa nuevo; la llamada de video sigue.
+- **Ids estables**: pizarras y objetos guardan su contenido con el id del objeto en Tiled, que nunca se
+  reutiliza (`nextobjectid`). Así, mover una pizarra no pierde lo dibujado y un objeto nuevo no hereda
+  contenido viejo.
+- El contenido inicial de un objeto (el del mapa) solo se ve mientras nadie lo cambie desde el juego.
+- El editor se abre en otra pestaña y se carga aparte (~10 KB comprimido), así que no pesa en el juego.
+
 ## Interactividad y juego (Fase 4)
 
 | Tema                | Decisión                                                                                       |

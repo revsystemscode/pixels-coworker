@@ -2,7 +2,7 @@
 
 Plataforma web de reuniones en un mundo 2D (vista cenital, pixel art) con video y audio por proximidad.
 
-Estado: **fases 0–4 completas** (MVP, pizarra e interactividad). Ver [`docs/decisiones.md`](./docs/decisiones.md).
+Estado: **fases 0–5 completas** (MVP, pizarra, interactividad y editor de mapas). Ver [`docs/decisiones.md`](./docs/decisiones.md).
 
 ## Requisitos
 
@@ -34,6 +34,32 @@ las migraciones de la base de datos y después arranca en paralelo:
 Sin Docker puedes arrancar solo las apps con `pnpm dev:apps` (los servicios aparecerán como `down`).
 
 ## Cómo probar
+
+### Fase 5 · Editor de mapas
+
+1. `pnpm dev`. Entra a un espacio tuyo (o donde seas admin) y pulsa **Editar mapa**: se abre en otra
+   pestaña y sigues dentro del espacio. También hay un enlace en la pantalla previa a entrar.
+2. A la izquierda eliges la herramienta:
+   - **Paleta**: suelos, muebles, sillas, alfombras y cosas de pared. Los muebles bloquean el paso; las
+     sillas y alfombras no.
+   - **Paredes** (beige o gris): se unen solas y llevan su cara debajo.
+   - **Zona privada**, **Pizarra** y **Objeto** (nota, enlace, video o mesa de juegos): arrastra para
+     dibujarlos. Con **Seleccionar** se mueven, y a la derecha se cambia el nombre, el tamaño y el
+     contenido inicial.
+   - **Inicio** (donde aparece quien entra por primera vez), **Borrar**, **Bloquear** y
+     **Desbloquear**.
+3. Arriba: deshacer y rehacer (Ctrl+Z / Ctrl+Shift+Z), zoom, **Ver bloqueos**, importar y exportar.
+   A la derecha, sin nada seleccionado: tamaño del mapa (8–100 casillas) y empezar en blanco o desde la
+   oficina.
+4. Los cambios se guardan solos como **borrador**: nadie los ve. Pulsa **Publicar** y quien esté en el
+   espacio ve el mapa nuevo al momento, sin salir (si quedó encima de una pared, pasa a la casilla
+   libre más cercana).
+
+Solo pueden editar el dueño y los admins.
+
+```bash
+pnpm --filter @pixels/web e2e editor map-publish
+```
 
 ### Fase 4 · Tres en raya
 
@@ -273,6 +299,14 @@ y el servidor (para validar colisiones). Se pueden abrir y editar con
 - Capa de objetos `objects` (opcional): cada **rectángulo** es un objeto interactivo según su tipo
   (`link`, `video`, `note` o `game`, la mesa del minijuego). La propiedad `value` (texto) es su
   contenido inicial; lo que cambien el dueño o los admins se guarda aparte, con el id del objeto.
+
+**Editor e importación.** El editor del juego (Fase 5) cambia el mapa de cada espacio. También
+importa y exporta Tiled JSON con estas condiciones: tiles de 16 px, como mucho 100×100 casillas, sin
+mapa infinito, capas sin comprimir, y solo los dos tilesets de Kenney **incrustados** (en Tiled,
+«Incrustar tileset») con su `firstgid` (1 y 1768). Al exportar, las imágenes se nombran por archivo
+(`kenney-roguelike-base.png`, `kenney-roguelike-indoor.png`): para abrir el mapa en Tiled, copia esos
+dos PNG de `apps/web/public/assets/tilesets/` junto al JSON. La colisión se calcula sola al pintar
+(paredes y muebles de la paleta); los tiles que no están en la paleta conservan su colisión.
 
 `office.json` se generó con `node tools/build-office-map.mjs`. Si lo editas en Tiled, no vuelvas a
 ejecutar ese script (sobrescribiría tus cambios). Los cambios en la plantilla solo afectan a los

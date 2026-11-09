@@ -1,13 +1,17 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Link, Route, Routes } from 'react-router';
 import { useSession } from './auth.js';
-import { EditorPage } from './editor/EditorPage.js';
 import { HomePage } from './pages/HomePage.js';
 import { InvitePage } from './pages/InvitePage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
 import { SpacePage } from './pages/SpacePage.js';
 import { Loading, RequireAuth } from './ui/RequireAuth.js';
+
+// El editor de mapas solo se descarga al abrirlo (pocos lo usan).
+const EditorPage = lazy(() =>
+  import('./editor/EditorPage.js').then((m) => ({ default: m.EditorPage })),
+);
 
 export function App() {
   const me = useSession((s) => s.me);
@@ -51,7 +55,9 @@ export function App() {
         path="/s/:spaceId/editor"
         element={
           <RequireAuth>
-            <EditorPage />
+            <Suspense fallback={<Loading />}>
+              <EditorPage />
+            </Suspense>
           </RequireAuth>
         }
       />
