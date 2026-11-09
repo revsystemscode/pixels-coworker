@@ -123,6 +123,7 @@ model Space {
   invites     Invite[]
   whiteboards Whiteboard[]
   objects     SpaceObject[]
+  mapDraft    MapDraft?
 
   @@index([mapId])
   @@map("spaces")
@@ -208,4 +209,20 @@ model SpaceObject {
 
   @@id([spaceId, objectId])
   @@map("space_objects")
+}
+
+/**
+ * Borrador del mapa de un espacio en el editor. Al publicarlo pasa al mapa del espacio y se borra.
+ */
+model MapDraft {
+  spaceId     String   @id
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  /**
+   * Tiled JSON ya validado y normalizado.
+   */
+  data        Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("map_drafts")
 }

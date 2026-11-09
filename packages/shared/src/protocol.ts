@@ -111,6 +111,7 @@ export const SPACE_EVENTS_CHANNEL = 'pixels:space-events';
 export type SpaceEvent =
   | { type: 'member-removed'; spaceId: string; userId: string }
   | { type: 'role-changed'; spaceId: string; userId: string; role: Role }
+  | { type: 'map-updated'; spaceId: string }
   | { type: 'space-deleted'; spaceId: string };
 
 /** Códigos con los que el servidor de juego cierra la conexión (el cliente muestra el motivo). */

@@ -6,6 +6,7 @@ import { createAuth, type AuthOptions } from './auth.js';
 import { registerAuthRoutes } from './auth-routes.js';
 import type { PublishSpaceEvent } from './events.js';
 import type { HealthChecks } from './health.js';
+import { registerEditorRoutes } from './editor.js';
 import { registerJoinRoutes } from './join.js';
 import { registerInviteRoutes, registerPublicInviteRoutes } from './invites.js';
 import { registerMeRoutes } from './me.js';
@@ -70,6 +71,7 @@ export async function buildApp({
   authenticated(app, auth, (scope) => {
     registerMeRoutes(scope, db);
     registerSpaceRoutes(scope, db, publish);
+    registerEditorRoutes(scope, db, publish);
     registerJoinRoutes(scope, db, {
       ticketSecret: media.ticketSecret,
       ...(media.now ? { now: media.now } : {}),

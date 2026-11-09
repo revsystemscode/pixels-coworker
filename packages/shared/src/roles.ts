@@ -23,6 +23,7 @@ export const can = {
   /** Los invitados no ven la lista de miembros. */
   viewMembers: (role: Role) => role !== 'guest',
   manageInvites: isManager,
+  editMap: isManager,
 };
 
 /** Roles que se pueden dar con un enlace de invitación. */

@@ -1,6 +1,7 @@
 /** Tipos de la API HTTP (cuentas, espacios e invitaciones). */
 import { isAvatar } from './avatar.js';
 import { NAME_MAX_LENGTH } from './constants.js';
+import type { TiledMap } from './map.js';
 import type { InviteRole, Role } from './roles.js';
 
 /** GET /auth/options: qué formas de login están activas. */
@@ -83,6 +84,28 @@ export interface JoinSpaceResponse {
   ticket: string;
   space: SpaceSummary;
   /** Versión del mapa (para la caché de GET /spaces/:id/map). */
+  mapVersion: string;
+}
+
+/** GET /spaces/:id/editor (dueño y admins): el mapa publicado y el borrador, si hay. */
+export interface MapEditorResponse {
+  published: TiledMap;
+  publishedAt: string;
+  draft: TiledMap | null;
+  draftUpdatedAt: string | null;
+}
+
+/** PUT /spaces/:id/editor/draft. */
+export interface SaveDraftRequest {
+  map: unknown;
+}
+
+export interface SaveDraftResponse {
+  draftUpdatedAt: string;
+}
+
+/** POST /spaces/:id/editor/publish. */
+export interface PublishMapResponse {
   mapVersion: string;
 }
 
