@@ -1,4 +1,5 @@
 export * from './api.js';
+export * from './avatar.js';
 export * from './constants.js';
 export * from './direction.js';
 export * from './emotes.js';

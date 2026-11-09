@@ -21,7 +21,7 @@ export const MOVE_DURATION_MS = 160;
 export const STEP_BURST = 3;
 export const STEP_SPEED_TOLERANCE = 1.15;
 
-/** Número de avatares disponibles (personajes del pack RPG Urban de Kenney). */
+/** Número de personajes base (del pack RPG Urban de Kenney). Los colores: ver avatar.ts. */
 export const AVATAR_COUNT = 6;
 
 export const NAME_MAX_LENGTH = 24;

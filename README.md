@@ -35,6 +35,20 @@ Sin Docker puedes arrancar solo las apps con `pnpm dev:apps` (los servicios apar
 
 ## Cómo probar
 
+### Fase 4 · Personalizar el avatar
+
+1. En **Tu perfil** (pulsa tu avatar arriba a la derecha, o **Cambiar** antes de entrar a un espacio)
+   elige personaje y, si quieres, color de camiseta, pelo y piel. Los personajes se ven ya con esos
+   colores.
+2. Entra a un espacio con otra cuenta: te ve con tus colores.
+
+Los colores se cambian en el navegador sobre el dibujo de Kenney (no hay arte nuevo). El aspecto se
+guarda como un número en `users.avatar`; los avatares de antes siguen igual.
+
+```bash
+pnpm --filter @pixels/web e2e avatar
+```
+
 ### Fase 4 · Reacciones y mano levantada
 
 1. `pnpm dev`. Entra con dos cuentas al mismo espacio.

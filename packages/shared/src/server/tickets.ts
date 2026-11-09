@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { isAvatar } from '../avatar.js';
 import { isRole, type Role } from '../roles.js';
 
 /**
@@ -83,7 +84,7 @@ export function verifyJoinTicket(
     !nonEmpty(f.uid) ||
     !nonEmpty(f.space) ||
     !nonEmpty(f.name) ||
-    !Number.isInteger(f.avatar) ||
+    !isAvatar(f.avatar) ||
     !isRole(f.role)
   ) {
     return null;

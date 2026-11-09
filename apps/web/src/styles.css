@@ -415,6 +415,63 @@ button.secondary.danger {
   max-width: 100%;
 }
 
+.avatar-picker {
+  display: grid;
+  gap: 12px;
+}
+
+.swatches {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.swatches legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.swatch {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  cursor: pointer;
+}
+
+/* «Original»: sin color propio (el del dibujo). */
+.swatch.original {
+  background: linear-gradient(
+    135deg,
+    var(--panel-alt) 45%,
+    var(--muted) 45%,
+    var(--muted) 55%,
+    var(--panel-alt) 55%
+  );
+}
+
+.swatch.selected {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.swatch:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.swatch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .error {
   margin: 0;
   color: var(--down);

@@ -1,5 +1,6 @@
 /** Tipos de la API HTTP (cuentas, espacios e invitaciones). */
-import { AVATAR_COUNT, NAME_MAX_LENGTH } from './constants.js';
+import { isAvatar } from './avatar.js';
+import { NAME_MAX_LENGTH } from './constants.js';
 import type { InviteRole, Role } from './roles.js';
 
 /** GET /auth/options: qué formas de login están activas. */
@@ -101,10 +102,8 @@ export function parseProfile(raw: unknown): ProfileUpdate | null {
   const { name, avatar } = raw as Record<string, unknown>;
   const clean = cleanText(name, NAME_MAX_LENGTH);
   if (!clean) return null;
-  if (!Number.isInteger(avatar) || (avatar as number) < 0 || (avatar as number) >= AVATAR_COUNT) {
-    return null;
-  }
-  return { name: clean, avatar: avatar as number };
+  if (!isAvatar(avatar)) return null;
+  return { name: clean, avatar };
 }
 
 /** Nombre de espacio limpio, o null si queda vacío. */

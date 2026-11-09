@@ -7,6 +7,10 @@ import { createDb } from '@pixels/db';
 import {
   AVATAR_COUNT,
   ClientMessage,
+  HAIR_COLORS,
+  SHIRT_COLORS,
+  SKIN_COLORS,
+  encodeAvatar,
   DIRECTIONS,
   JOIN_TICKET_TTL_MS,
   MOVE_DURATION_MS,
@@ -72,7 +76,13 @@ for (let i = 0; i < count; i++) {
       uid: `bot-${i + 1}`,
       space: space.id,
       name: `Bot ${i + 1}`,
-      avatar: i % AVATAR_COUNT,
+      // Colores variados: cada aspecto distinto es una textura más en el navegador.
+      avatar: encodeAvatar({
+        base: i % AVATAR_COUNT,
+        shirt: i % (SHIRT_COLORS.length + 1),
+        hair: i % (HAIR_COLORS.length + 1),
+        skin: i % (SKIN_COLORS.length + 1),
+      }),
       role: 'guest',
       exp: Date.now() + JOIN_TICKET_TTL_MS,
     },

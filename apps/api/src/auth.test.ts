@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import type { Me } from '@pixels/shared';
+import { AVATAR_COUNT, encodeAvatar, type Me } from '@pixels/shared';
 import { WEB_ORIGIN, createTestApp, signIn, useCleanDatabase } from './test-config.js';
 
 useCleanDatabase();
@@ -87,25 +87,28 @@ describe('perfil (/me)', () => {
   });
 
   it('guarda nombre y avatar validados', async () => {
+    // Personaje 4 con camiseta y piel elegidas.
+    const look = encodeAvatar({ base: 3, shirt: 2, hair: 0, skin: 4 });
     const cookie = await signIn(t, 'ana@example.com');
     const ok = await t.app.inject({
       method: 'PATCH',
       url: '/me',
       headers: { ...json, cookie },
-      payload: { name: '  Ana  ', avatar: 3 },
+      payload: { name: '  Ana  ', avatar: look },
     });
-    expect(ok.json<Me>()).toMatchObject({ name: 'Ana', avatar: 3 });
+    expect(ok.json<Me>()).toMatchObject({ name: 'Ana', avatar: look });
 
+    // Un personaje que no existe.
     const bad = await t.app.inject({
       method: 'PATCH',
       url: '/me',
       headers: { ...json, cookie },
-      payload: { name: 'Ana', avatar: 42 },
+      payload: { name: 'Ana', avatar: AVATAR_COUNT },
     });
     expect(bad.statusCode).toBe(400);
 
     const me = await t.app.inject({ method: 'GET', url: '/me', headers: { cookie } });
-    expect(me.json<Me>()).toMatchObject({ name: 'Ana', avatar: 3 });
+    expect(me.json<Me>()).toMatchObject({ name: 'Ana', avatar: look });
   });
 
   it('rechaza cambios desde otro origen (CSRF)', async () => {

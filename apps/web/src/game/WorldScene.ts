@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { Callbacks, type Room } from '@colyseus/sdk';
 import {
-  AVATAR_COUNT,
   ClientMessage,
   DIRECTIONS,
   EMOTES,
@@ -31,7 +30,16 @@ import {
 } from '../reactions/store.js';
 import { useBoard } from '../whiteboard/store.js';
 import { Avatar } from './Avatar.js';
-import { CHARACTER_SHEET, WALK_FRAME_RATE, walkAnimKey, walkFrames } from './characters.js';
+import {
+  CHARACTER_SHEET,
+  FRAMES_PER_LOOK,
+  LOOK_WIDTH,
+  WALK_FRAME_RATE,
+  lookCanvas,
+  lookTextureKey,
+  walkAnimKey,
+  walkFrames,
+} from './characters.js';
 import { Predictor } from './prediction.js';
 
 /** Vista del estado de un jugador tal como llega del servidor. */
@@ -93,15 +101,11 @@ export class WorldScene extends Phaser.Scene {
   preload() {
     this.load.tilemapTiledJSON(MAP_KEY, this.tiled);
     for (const t of TILESETS) this.load.image(t.name, t.url);
-    this.load.spritesheet(CHARACTER_SHEET.key, CHARACTER_SHEET.url, {
-      frameWidth: CHARACTER_SHEET.frameSize,
-      frameHeight: CHARACTER_SHEET.frameSize,
-    });
+    this.load.image(CHARACTER_SHEET.key, CHARACTER_SHEET.url);
   }
 
   create() {
     this.createMap();
-    this.createAnimations();
     this.createInput();
     this.bindState();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
@@ -150,20 +154,24 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private createAnimations() {
-    for (let avatar = 0; avatar < AVATAR_COUNT; avatar++) {
-      for (const dir of DIRECTIONS) {
-        const key = walkAnimKey(avatar, dir);
-        if (this.anims.exists(key)) continue;
-        this.anims.create({
-          key,
-          frames: this.anims.generateFrameNumbers(CHARACTER_SHEET.key, {
-            frames: walkFrames(avatar, dir),
-          }),
-          frameRate: WALK_FRAME_RATE,
-          repeat: -1,
-        });
-      }
+  /** Crea (la primera vez) la textura y las animaciones de un aspecto de avatar. */
+  private ensureLook(avatar: number) {
+    const key = lookTextureKey(avatar);
+    if (this.textures.exists(key)) return;
+    const sheet = this.textures.get(CHARACTER_SHEET.key).getSourceImage() as HTMLImageElement;
+    const texture = this.textures.addCanvas(key, lookCanvas(sheet, avatar))!;
+    const size = CHARACTER_SHEET.frameSize;
+    const columns = LOOK_WIDTH / size;
+    for (let i = 0; i < FRAMES_PER_LOOK; i++) {
+      texture.add(i, 0, (i % columns) * size, Math.floor(i / columns) * size, size, size);
+    }
+    for (const dir of DIRECTIONS) {
+      this.anims.create({
+        key: walkAnimKey(avatar, dir),
+        frames: walkFrames(dir).map((frame) => ({ key, frame })),
+        frameRate: WALK_FRAME_RATE,
+        repeat: -1,
+      });
     }
   }
 
@@ -249,6 +257,7 @@ export class WorldScene extends Phaser.Scene {
         const player = value as PlayerState;
         const sessionId = key as string;
         const isSelf = sessionId === this.room.sessionId;
+        this.ensureLook(player.avatar);
         const avatar = new Avatar(
           this,
           player.avatar,
@@ -384,6 +393,7 @@ export class WorldScene extends Phaser.Scene {
         id,
         x: Math.round(a.sprite.x),
         y: Math.round(a.sprite.y),
+        avatar: a.look,
         hand: a.handRaised,
         emote: a.currentEmote,
       })),

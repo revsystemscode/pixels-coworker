@@ -75,11 +75,22 @@ export async function signIn(page: Page, email: string, next = '/') {
   await page.goto(await magicLinkFor(email));
 }
 
-/** Rellena el perfil la primera vez (nombre y avatar). */
-export async function completeProfile(page: Page, name: string, avatar = 1) {
+/** Colores del avatar, por nombre (por ejemplo `{ Camiseta: 'Azul' }`). */
+export type LookColors = Partial<Record<'Camiseta' | 'Pelo' | 'Piel', string>>;
+
+/** Rellena el perfil la primera vez (nombre, avatar y, si se piden, colores). */
+export async function completeProfile(
+  page: Page,
+  name: string,
+  avatar = 1,
+  colors: LookColors = {},
+) {
   await expect(page.getByRole('heading', { name: 'Elige cómo te verán' })).toBeVisible();
   await page.getByLabel('Nombre').fill(name);
   await page.getByRole('radio', { name: `Avatar ${avatar}` }).check();
+  for (const [part, color] of Object.entries(colors)) {
+    await page.getByRole('radio', { name: `${part}: ${color}` }).check();
+  }
   await page.getByRole('button', { name: 'Continuar' }).click();
 }
 
@@ -115,12 +126,12 @@ export async function enterSpace(page: Page, { camera = false }: { camera?: bool
 export async function joinAs(
   name: string,
   avatar = 1,
-  { camera = false }: { camera?: boolean } = {},
+  { camera = false, colors = {} }: { camera?: boolean; colors?: LookColors } = {},
 ): Promise<Page> {
   const page = await newBrowserPage();
   if (!current) {
     await signIn(page, uniqueEmail(name));
-    await completeProfile(page, name, avatar);
+    await completeProfile(page, name, avatar, colors);
     const spaceId = await createSpace(page, `Prueba ${Date.now()}`);
     // page.request comparte las cookies de la página: la petición va con la sesión.
     const res = await page.request.post(`${API_URL}/spaces/${spaceId}/invites`, {
@@ -133,7 +144,7 @@ export async function joinAs(
     const invite = `/i/${current.invite}`;
     await signIn(page, uniqueEmail(name), invite);
     await page.getByRole('button', { name: 'Unirme al espacio' }).click();
-    await completeProfile(page, name, avatar);
+    await completeProfile(page, name, avatar, colors);
     await page.waitForURL(new RegExp(`/s/${current.spaceId}$`));
   }
   await enterSpace(page, { camera });

@@ -4,7 +4,8 @@ import type { Direction } from '@pixels/shared';
 export const Player = schema(
   {
     name: t.string(),
-    avatar: t.uint8(),
+    /** Aspecto (personaje y colores), ver encodeAvatar. */
+    avatar: t.uint16(),
     /** Posición en tiles. */
     x: t.int16(),
     y: t.int16(),

@@ -22,7 +22,7 @@ model User {
   emailVerified Boolean  @default(false)
   image         String?
   /**
-   * Índice del avatar elegido (0..AVATAR_COUNT-1).
+   * Aspecto del avatar: personaje y colores en un número (ver encodeAvatar en @pixels/shared).
    */
   avatar        Int      @default(0)
   createdAt     DateTime @default(now())

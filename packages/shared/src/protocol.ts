@@ -1,4 +1,5 @@
-import { AVATAR_COUNT, CHAT_MAX_LENGTH, NAME_MAX_LENGTH } from './constants.js';
+import { isAvatar } from './avatar.js';
+import { CHAT_MAX_LENGTH, NAME_MAX_LENGTH } from './constants.js';
 import { isDirection, type Direction } from './direction.js';
 
 /** Mensajes que el cliente envía al servidor de juego. */
@@ -103,9 +104,7 @@ export function sanitizeName(raw: unknown): string {
 }
 
 export function sanitizeAvatar(raw: unknown): number {
-  return Number.isInteger(raw) && (raw as number) >= 0 && (raw as number) < AVATAR_COUNT
-    ? (raw as number)
-    : 0;
+  return isAvatar(raw) ? raw : 0;
 }
 
 export function parseStep(raw: unknown): StepMessage | null {

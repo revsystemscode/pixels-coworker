@@ -7,7 +7,7 @@ import {
   type Direction,
   type Point,
 } from '@pixels/shared';
-import { CHARACTER_SHEET, idleFrame, walkAnimKey } from './characters.js';
+import { idleFrame, lookTextureKey, walkAnimKey } from './characters.js';
 
 const LABEL_FONT_PX = 24;
 const EMOTE_FONT_PX = 48;
@@ -45,7 +45,7 @@ export class Avatar {
     this.tile = tile;
     this.dir = dir;
     const { x, y } = center(tile);
-    this.sprite = scene.add.sprite(x, y, CHARACTER_SHEET.key, idleFrame(avatar, dir));
+    this.sprite = scene.add.sprite(x, y, lookTextureKey(avatar), idleFrame(dir));
     // Texto grande escalado hacia abajo: se ve nítido con el zoom de la cámara.
     this.label = scene.add
       .text(x, y, name, {
@@ -98,7 +98,7 @@ export class Avatar {
   idle() {
     this.cancelIdle();
     this.sprite.stop();
-    this.sprite.setFrame(idleFrame(this.avatar, this.dir));
+    this.sprite.setFrame(idleFrame(this.dir));
   }
 
   /**
@@ -189,6 +189,11 @@ export class Avatar {
     if (raised === this.hand) return;
     this.hand = raised;
     this.label.setText(raised ? `${HAND_EMOJI} ${this.name}` : this.name);
+  }
+
+  /** Aspecto (personaje y colores). */
+  get look() {
+    return this.avatar;
   }
 
   get handRaised() {
