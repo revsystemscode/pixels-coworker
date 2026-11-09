@@ -11,6 +11,8 @@ import {
   type MapObject,
 } from '@pixels/shared';
 import { useApp } from '../store.js';
+import { useGame } from '../tictactoe/store.js';
+import { openMapObject } from './open.js';
 import { useObjects } from './store.js';
 
 const KIND_LABELS = { link: 'Enlace', video: 'Video', note: 'Nota', game: 'Juego' } as const;
@@ -225,22 +227,24 @@ function ObjectEditor({
 }
 
 /** Aviso para abrir el objeto que tenemos cerca (o por qué se cerró). */
-export function ObjectPrompt() {
+export function ObjectPrompt({ room }: { room: Room }) {
   const near = useObjects((s) => s.near);
   const open = useObjects((s) => s.open);
+  const gameOpen = useGame((s) => s.open);
   const notice = useObjects((s) => s.notice);
-  const openObject = useObjects((s) => s.openObject);
-  if (notice && !open) {
+  const gameNotice = useGame((s) => s.notice);
+  const shown = notice ?? gameNotice;
+  if (shown && !open && !gameOpen) {
     return (
       <p className="board-prompt" role="status">
-        {notice}
+        {shown}
       </p>
     );
   }
-  if (!near || open?.id === near.id) return null;
+  if (!near || open?.id === near.id || gameOpen?.id === near.id) return null;
   return (
-    <button type="button" className="board-prompt" onClick={() => openObject(near)}>
-      Abrir «{near.name}» <kbd>E</kbd>
+    <button type="button" className="board-prompt" onClick={() => openMapObject(room, near)}>
+      {near.kind === 'game' ? 'Jugar en' : 'Abrir'} «{near.name}» <kbd>E</kbd>
     </button>
   );
 }

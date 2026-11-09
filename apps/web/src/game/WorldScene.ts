@@ -19,7 +19,9 @@ import {
   type TiledMap,
   type WorldMap,
 } from '@pixels/shared';
+import { openMapObject } from '../objects/open.js';
 import { useObjects } from '../objects/store.js';
+import { useGame } from '../tictactoe/store.js';
 import {
   forgetReactions,
   sendEmote,
@@ -72,9 +74,6 @@ const VISIBLE_LAYERS = ['floor', 'walls', 'decor-below', 'furniture'];
 const HEAD_OFFSET = 18;
 
 type KeyMap = Record<Direction, Phaser.Input.Keyboard.Key[]>;
-
-/** La mesa de juego todavía no se puede usar. */
-const usable = (it: Interactable) => it.type === 'board' || it.item.kind !== 'game';
 
 export class WorldScene extends Phaser.Scene {
   private room!: Room;
@@ -187,7 +186,8 @@ export class WorldScene extends Phaser.Scene {
 
     // E abre la pizarra o el objeto que tengamos cerca.
     kb.addKey(K.E, false).on('down', () => {
-      if (this.typing() || useBoard.getState().open || useObjects.getState().open) return;
+      if (this.typing() || useBoard.getState().open) return;
+      if (useObjects.getState().open || useGame.getState().open) return;
       const near = this.nearInteractable();
       if (near) this.openInteractable(near);
     });
@@ -213,7 +213,7 @@ export class WorldScene extends Phaser.Scene {
       this.target = null;
       // Clic en una pizarra u objeto: se abre (caminando antes hasta él si está lejos).
       const clicked = interactableAt(this.world, target);
-      if (clicked && usable(clicked)) {
+      if (clicked) {
         const here = this.predictor.position;
         this.path =
           findPathWhere(this.world, here, (x, y) => isWithinReach({ x, y }, clicked.item)) ?? [];
@@ -233,9 +233,10 @@ export class WorldScene extends Phaser.Scene {
     this.path = [];
     if (it.type === 'board') {
       useObjects.getState().close();
+      useGame.getState().close();
       useBoard.getState().openBoard(this.room, it.item);
     } else {
-      useObjects.getState().openObject(it.item);
+      openMapObject(this.room, it.item);
     }
   }
 
@@ -253,8 +254,7 @@ export class WorldScene extends Phaser.Scene {
   private updateNear() {
     if (!this.predictor) return;
     const here = this.predictor.position;
-    const found = interactableNear(this.world, here);
-    const near = found && usable(found) ? found : null;
+    const near = interactableNear(this.world, here);
     if (this.nearId !== (near?.item.id ?? null)) {
       this.nearId = near?.item.id ?? null;
       useBoard.setState({ near: near?.type === 'board' ? near.item : null });

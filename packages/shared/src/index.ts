@@ -11,5 +11,6 @@ export * from './pathfinding.js';
 export * from './protocol.js';
 export * from './proximity.js';
 export * from './roles.js';
+export * from './tictactoe.js';
 export * from './tiles.js';
 export * from './whiteboard.js';

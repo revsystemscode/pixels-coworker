@@ -2,7 +2,7 @@
 
 Plataforma web de reuniones en un mundo 2D (vista cenital, pixel art) con video y audio por proximidad.
 
-Estado: **MVP completo** (fases 0–3 y pizarra). Ver [`docs/decisiones.md`](./docs/decisiones.md).
+Estado: **fases 0–4 completas** (MVP, pizarra e interactividad). Ver [`docs/decisiones.md`](./docs/decisiones.md).
 
 ## Requisitos
 
@@ -34,6 +34,19 @@ las migraciones de la base de datos y después arranca en paralelo:
 Sin Docker puedes arrancar solo las apps con `pnpm dev:apps` (los servicios aparecerán como `down`).
 
 ## Cómo probar
+
+### Fase 4 · Tres en raya
+
+1. `pnpm dev`. Entra con dos o tres cuentas al mismo espacio.
+2. En el centro de la oficina abierta hay una **Mesa de juegos**. Acércate y pulsa **Jugar en «Mesa de
+   juegos»** (o **E**). Las dos primeras personas que pulsen **Sentarme a jugar** juegan (X y O); el
+   resto mira la partida en directo.
+3. Al terminar, **Otra partida** (empieza quien no empezó). **Levantarme** o alejarse de la mesa deja
+   el asiento libre.
+
+```bash
+pnpm --filter @pixels/web e2e tictactoe
+```
 
 ### Fase 4 · Enlace, video y nota
 

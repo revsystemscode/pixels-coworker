@@ -2,6 +2,40 @@
 
 Registro breve de decisiones de producto y de arquitectura. Lo más reciente, arriba.
 
+## Interactividad y juego (Fase 4)
+
+| Tema                | Decisión                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------- |
+| Reacciones          | 6 emojis (teclas 1–6) durante 3 s sobre el avatar y en su burbuja de video. Mano levantada (H) |
+| Personalizar avatar | Mismos 6 personajes de Kenney, con color de camiseta, pelo y piel. Sin arte nuevo              |
+| Objetos             | Enlace, video y nota en la capa `objects` de Tiled. Se abren como las pizarras                 |
+| Quién edita objetos | **Dueño y admins**. Miembros e invitados los ven pero no los cambian                           |
+| Video               | Solo **YouTube** (dominio sin cookies) y **Vimeo**. Cada persona lo ve por su cuenta           |
+| Minijuego           | **Tres en raya** en una mesa de la oficina: dos juegan y quien esté cerca mira                 |
+
+- **Reacciones**: pasan por el servidor de juego con límite de frecuencia. La mano levantada es parte
+  del estado del jugador (la ve quien entra después); las reacciones solo se reparten en el momento.
+  Se muestran también en la burbuja de video porque, si alguien está cerca, la burbuja tapa la cabeza.
+- **Aspecto del avatar en un número**: personaje y colores se guardan juntos en `users.avatar`
+  (`encodeAvatar`). Así no cambian la base de datos, el ticket ni el estado de la sala, y los avatares
+  de antes siguen valiendo. El navegador repinta la hoja de Kenney: solo cambia los colores exactos
+  de cada parte y dentro de su zona (pelo arriba, camiseta en el torso), porque algunos zapatos son del
+  mismo color que el pelo. El obrero no tiene pelo que cambiar (lleva casco).
+- **Objetos editables**: el contenido se guarda en `space_objects`; si no hay fila, vale el del mapa
+  (propiedad `value` en Tiled). El servidor valida siempre: enlaces solo `http`/`https` y sin usuario ni
+  contraseña; videos solo como `youtube:<id>` o `vimeo:<id>`, y el reproductor se construye con un id
+  comprobado (nunca se mete una URL cualquiera en un iframe). El enlace se abre en otra pestaña tras
+  mostrar el dominio, con `noopener`.
+- **Cambios de rol**: la API avisa al servidor de juego (`role-changed` por Redis), así que un admin que
+  pasa a miembro deja de poder editar sin salir de la sala, y su interfaz se actualiza.
+- **Tres en raya**: la partida vive en memoria en la sala (no se guarda). El servidor valida asientos,
+  turnos, casillas y distancia. Si alguien se levanta o se aleja a mitad de partida, se empieza de cero;
+  en la revancha empieza quien no empezó la anterior.
+- **Mapas de los espacios existentes**: una migración les pone los objetos y la mesa, pero solo a los
+  que siguen siendo exactamente la plantilla anterior (un mapa editado no se pisa).
+- **Pendiente para la Fase 6**: cuando se añada una política de seguridad de contenido (CSP), permitir
+  `frame-src` de `www.youtube-nocookie.com` y `player.vimeo.com`.
+
 ## Pizarra (cierre del MVP)
 
 | Tema           | Decisión                                                                                       |

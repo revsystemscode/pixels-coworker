@@ -177,10 +177,10 @@ for (const [x0, y0] of [
   for (let dx = 0; dx < 4; dx++) put(furniture, x0 + dx, y0 + 1, indoor(109), { block: false });
 }
 
-// Mesa de juegos (tres en raya) con una silla a cada lado
-putRect(furniture, 34, 16, [[112, 114]]);
-put(furniture, 33, 16, indoor(57), { block: false });
-put(furniture, 36, 16, indoor(56), { block: false });
+// Mesa de juegos (tres en raya) con una silla a cada lado, en el centro de la oficina
+putRect(furniture, 24, 16, [[112, 114]]);
+put(furniture, 23, 16, indoor(57), { block: false });
+put(furniture, 26, 16, indoor(56), { block: false });
 
 // Plantas en las esquinas de la oficina
 for (const [x, y] of [
@@ -251,7 +251,7 @@ const OBJECTS = [
     value: '¡Bienvenidos a la oficina! El dueño y los admins pueden cambiar esta nota.',
   },
   { name: 'Enlace del equipo', type: 'link', x: 27, y: 9, width: 2, height: 2, wall: true },
-  { name: 'Mesa de juegos', type: 'game', x: 34, y: 16, width: 2, height: 1 },
+  { name: 'Mesa de juegos', type: 'game', x: 24, y: 16, width: 2, height: 1 },
 ];
 for (const o of OBJECTS)
   for (let y = o.y; y < o.y + o.height; y++)

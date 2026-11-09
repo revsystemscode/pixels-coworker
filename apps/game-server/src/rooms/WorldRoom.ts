@@ -9,9 +9,13 @@ import {
   WHITEBOARD_REACH,
   WHITEBOARD_SAVE_DELAY_MS,
   EDITABLE_KINDS,
+  TicTacToe,
   applyStep,
   canEditObjects,
   distanceToRect,
+  isWithinReach,
+  parseGameMove,
+  parseGameOpen,
   isWalkable,
   parseBoardOpen,
   parseBoardPointer,
@@ -32,6 +36,8 @@ import {
   type BoardUpdateMessage,
   type BoardViewersMessage,
   type ChatEntry,
+  type GameErrorMessage,
+  type GameStateMessage,
   type MediaTicketMessage,
   type ObjectContentMessage,
   type ObjectContentsMessage,
@@ -56,6 +62,13 @@ interface ClientLimits {
   boardPointer: TokenBucket;
   emotes: TokenBucket;
   objectEdits: TokenBucket;
+  games: TokenBucket;
+}
+
+/** Una mesa de juego: la partida y quién la tiene abierta (jugando o mirando). */
+interface GameTable {
+  game: TicTacToe;
+  viewers: Set<string>;
 }
 
 /** Lo que la sala recibe del servidor (no del cliente). */
@@ -105,6 +118,10 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   private objectValues = new Map<string, string>();
   /** Los guardados de objetos van en orden (el último en llegar es el que queda). */
   private objectSaves: Promise<void> = Promise.resolve();
+  /** Mesas de juego con alguien (se crean al abrirlas). La partida no se guarda. */
+  private games = new Map<string, GameTable>();
+  /** Mesa abierta por cada sesión. */
+  private openGames = new Map<string, string>();
   private limits = new Map<string, ClientLimits>();
   private chatHistory: ChatEntry[] = [];
   private chatCounter = 0;
@@ -149,6 +166,21 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     this.onMessage(ClientMessage.Emote, (client, raw) => this.handleEmote(client, raw));
     this.onMessage(ClientMessage.Hand, (client, raw) => this.handleHand(client, raw));
     this.onMessage(ClientMessage.ObjectEdit, (client, raw) => this.handleObjectEdit(client, raw));
+    this.onMessage(ClientMessage.GameOpen, (client, raw) => this.handleGameOpen(client, raw));
+    this.onMessage(ClientMessage.GameClose, (client) => this.closeGame(client.sessionId));
+    this.onMessage(ClientMessage.GameSit, (client) =>
+      this.gameAction(client, (game, p) => game.sit({ sessionId: client.sessionId, name: p.name })),
+    );
+    this.onMessage(ClientMessage.GameStand, (client) =>
+      this.gameAction(client, (game) => (game.stand(client.sessionId), null)),
+    );
+    this.onMessage(ClientMessage.GameMove, (client, raw) => {
+      const move = parseGameMove(raw);
+      if (move) this.gameAction(client, (game) => game.play(client.sessionId, move.cell));
+    });
+    this.onMessage(ClientMessage.GameRematch, (client) =>
+      this.gameAction(client, (game) => game.rematch(client.sessionId)),
+    );
     this.onMessage(ClientMessage.BoardOpen, (client, raw) => this.handleBoardOpen(client, raw));
     this.onMessage(ClientMessage.BoardClose, (client) => this.closeBoard(client.sessionId));
     this.onMessage(ClientMessage.BoardUpdate, (client, raw) => this.handleBoardUpdate(client, raw));
@@ -208,6 +240,7 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       // Reacciones y mano: unas cuantas seguidas, pero no una lluvia.
       emotes: new TokenBucket(1, 4),
       objectEdits: new TokenBucket(0.5, 3),
+      games: new TokenBucket(5, 10),
     });
     client.send(ServerMessage.ChatHistory, this.chatHistory);
     client.send(ServerMessage.ObjectContents, {
@@ -260,6 +293,7 @@ export class WorldRoom extends Room<{ state: WorldState }> {
 
   private forget(sessionId: string) {
     this.closeBoard(sessionId);
+    this.closeGame(sessionId);
     this.roles.delete(sessionId);
     this.state.players.delete(sessionId);
     this.limits.delete(sessionId);
@@ -293,6 +327,12 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       if (boardId && !this.isNearBoard(next, boardId)) {
         this.closeBoard(client.sessionId);
         this.sendBoardError(client, boardId, 'Te alejaste de la pizarra.', true);
+      }
+      const gameId = this.openGames.get(client.sessionId);
+      const table = gameId ? this.map.objects.find((o) => o.id === gameId) : undefined;
+      if (gameId && table && !isWithinReach(next, table)) {
+        this.closeGame(client.sessionId);
+        this.sendGameError(client, gameId, 'Te alejaste de la mesa.', true);
       }
     }
   }
@@ -531,6 +571,73 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       this.deps.onError?.('No se pudo guardar el objeto', err);
       fail('No se pudo guardar. Inténtalo de nuevo.');
     }
+  }
+
+  // --- Mesas de juego (tres en raya) ---
+
+  private handleGameOpen(client: Client, raw: unknown) {
+    const msg = parseGameOpen(raw);
+    const player = this.state.players.get(client.sessionId);
+    if (!msg || !player) return;
+    const table = this.map.objects.find((o) => o.id === msg.objectId && o.kind === 'game');
+    if (!table) return;
+    if (!isWithinReach(player, table)) {
+      this.sendGameError(client, table.id, 'Acércate a la mesa para jugar.', true);
+      return;
+    }
+    if (this.openGames.get(client.sessionId) === table.id) return;
+    this.closeGame(client.sessionId);
+    let entry = this.games.get(table.id);
+    if (!entry) {
+      entry = { game: new TicTacToe(), viewers: new Set() };
+      this.games.set(table.id, entry);
+    }
+    entry.viewers.add(client.sessionId);
+    this.openGames.set(client.sessionId, table.id);
+    this.sendGameState(table.id, entry);
+  }
+
+  /** Cierra la mesa que tenga abierta la sesión (y deja su asiento). */
+  private closeGame(sessionId: string) {
+    const objectId = this.openGames.get(sessionId);
+    if (!objectId) return;
+    this.openGames.delete(sessionId);
+    const entry = this.games.get(objectId);
+    if (!entry) return;
+    entry.viewers.delete(sessionId);
+    entry.game.stand(sessionId);
+    if (entry.viewers.size === 0) this.games.delete(objectId);
+    else this.sendGameState(objectId, entry);
+  }
+
+  /** Aplica una acción en la mesa abierta: si sale bien, todos los que miran ven el cambio. */
+  private gameAction(client: Client, action: (game: TicTacToe, player: Player) => string | null) {
+    const objectId = this.openGames.get(client.sessionId);
+    const entry = objectId ? this.games.get(objectId) : undefined;
+    const player = this.state.players.get(client.sessionId);
+    const limits = this.limits.get(client.sessionId);
+    if (!objectId || !entry || !player || !limits?.games.tryConsume(this.now())) return;
+    const error = action(entry.game, player);
+    if (error) this.sendGameError(client, objectId, error, false);
+    else this.sendGameState(objectId, entry);
+  }
+
+  private sendGameState(objectId: string, { game, viewers }: GameTable) {
+    const message: GameStateMessage = {
+      objectId,
+      board: game.board,
+      seats: game.seats,
+      turn: game.turn,
+      outcome: game.outcome,
+      watching: viewers.size,
+    };
+    for (const c of this.clients) {
+      if (viewers.has(c.sessionId)) c.send(ServerMessage.GameState, message);
+    }
+  }
+
+  private sendGameError(client: Client, objectId: string, message: string, closed: boolean) {
+    client.send(ServerMessage.GameError, { objectId, message, closed } satisfies GameErrorMessage);
   }
 
   // --- Reacciones ---

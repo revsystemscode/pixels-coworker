@@ -23,6 +23,18 @@ export const ClientMessage = {
   Hand: 'hand',
   /** Cambia el contenido de un objeto ({ objectId, value }). Solo dueño y admins. */
   ObjectEdit: 'object-edit',
+  /** Abre una mesa de juego ({ objectId }) para jugar o mirar. Hay que estar cerca. */
+  GameOpen: 'game-open',
+  /** Cierra la mesa abierta (y deja el asiento, si tenía). */
+  GameClose: 'game-close',
+  /** Se sienta a jugar en la mesa abierta. */
+  GameSit: 'game-sit',
+  /** Deja el asiento (sigue mirando). */
+  GameStand: 'game-stand',
+  /** Marca una casilla ({ cell }: 0–8). */
+  GameMove: 'game-move',
+  /** Otra partida, al terminar la anterior. */
+  GameRematch: 'game-rematch',
 } as const;
 
 /** Mensajes que el servidor de juego envía a los clientes. */
@@ -47,6 +59,9 @@ export const ServerMessage = {
   ObjectError: 'object-error',
   /** Mi rol en el espacio ha cambiado. */
   RoleChanged: 'role-changed',
+  /** Estado de la mesa de juego abierta. Ver tictactoe.ts. */
+  GameState: 'game-state',
+  GameError: 'game-error',
 } as const;
 
 /** Opciones al entrar en la sala: el espacio y el ticket que da la API (POST /spaces/:id/join). */

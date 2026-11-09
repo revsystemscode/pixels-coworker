@@ -5,6 +5,7 @@ import type { TiledMap } from '@pixels/shared';
 import { useApp } from '../store.js';
 import { GameCanvas } from '../game/GameCanvas.js';
 import { ObjectPanel, ObjectPrompt } from '../objects/ObjectPanel.js';
+import { GamePanel } from '../tictactoe/GamePanel.js';
 import { BoardOverlay, BoardPrompt } from '../whiteboard/BoardOverlay.js';
 import { ChatPanel } from './ChatPanel.js';
 import { MediaControls } from './MediaControls.js';
@@ -34,8 +35,9 @@ export function WorldScreen({ room, map }: { room: Room; map: TiledMap }) {
       <MediaControls />
       <p className="hint">Muévete con las flechas, WASD o con clic. Reacciones: 1–6. Mano: H.</p>
       <BoardPrompt room={room} />
-      <ObjectPrompt />
+      <ObjectPrompt room={room} />
       <ObjectPanel room={room} />
+      <GamePanel selfId={room.sessionId} />
       <ChatPanel selfId={room.sessionId} />
       <BoardOverlay selfId={room.sessionId} />
       {panelOpen && space && <SpacePanel space={space} onClose={() => setPanelOpen(false)} />}

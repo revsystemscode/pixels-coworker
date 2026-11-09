@@ -19,6 +19,7 @@ import { env } from './env.js';
 import { MediaSession } from './media/MediaSession.js';
 import { useMedia } from './media/store.js';
 import { bindObjects, useObjects } from './objects/store.js';
+import { bindGames, useGame } from './tictactoe/store.js';
 import { useBoard } from './whiteboard/store.js';
 
 const MAX_MESSAGES = 200;
@@ -90,6 +91,7 @@ export const useApp = create<AppState>((set, get) => ({
         room.onMessage(ServerMessage.MediaTicket, (m: MediaTicketMessage) => resolve(m.ticket)),
       );
       bindObjects(room);
+      bindGames(room);
       room.onMessage(ServerMessage.RoleChanged, ({ role }: RoleChangedMessage) => {
         const space = get().space;
         if (space && get().room === room) set({ space: { ...space, role } });
@@ -104,6 +106,7 @@ export const useApp = create<AppState>((set, get) => ({
         if (get().room !== room) return;
         useBoard.getState().close();
         useObjects.getState().close();
+        useGame.getState().close();
         void get().media?.stop();
         set({
           phase: 'idle',
@@ -126,6 +129,7 @@ export const useApp = create<AppState>((set, get) => ({
     const { room, media } = get();
     useBoard.getState().close();
     useObjects.getState().close();
+    useGame.getState().close();
     set({ phase: 'idle', room: null, media: null, error: null });
     await Promise.all([media?.stop(), room?.leave()]);
   },
