@@ -225,18 +225,26 @@ pnpm test                                   # unitarias e integración (Vitest)
 pnpm --filter @pixels/web e2e               # E2E con Playwright (cuentas, movimiento, chat y video)
 ```
 
-Prueba de carga (50 bots paseando por la oficina). Los bots entran al último espacio creado (o al que
-indiques con su id) firmando sus propios tickets con `TICKET_SECRET`:
+Prueba de carga. Cada espacio admite **100 personas** (`MAX_PLAYERS_PER_ROOM`). Los bots entran al
+último espacio creado (o al que indiques con su id), pasean y reaccionan de vez en cuando, firmando sus
+propios tickets con `TICKET_SECRET`:
 
 ```bash
-# El servidor admite 25 jugadores por sala; para la prueba, súbelo:
-ROOM_MAX_CLIENTS=60 pnpm --filter @pixels/game-server dev
-pnpm --filter @pixels/game-server bots -- 50      # Ctrl+C para parar
-pnpm --filter @pixels/game-server bots -- 50 0 <id-del-espacio>
+pnpm --filter @pixels/game-server bots -- 98            # Ctrl+C para parar
+pnpm --filter @pixels/game-server bots -- 98 60 <id>    # 60 segundos en ese espacio
 ```
 
-Entra a ese espacio desde la web y mira el contador de FPS (objetivo: 30 o más). Medido en un MacBook Pro 2019 con GPU
-integrada (Intel UHD 630): 60 FPS estables con 50 bots.
+Entra a ese espacio desde la web y mira el contador de FPS (objetivo: 30 o más). También hay una prueba
+automática con el espacio lleno (98 bots y dos personas), que mide FPS y la carga del servidor
+(`GET /health` del servidor de juego incluye el retraso del bucle de eventos y la memoria):
+
+```bash
+LOAD_TEST=1 LOAD_TEST_GPU=1 pnpm --filter @pixels/web e2e load
+```
+
+Medido en un MacBook Pro 2019 (GPU integrada Intel UHD 630) con 100 jugadores en la oficina: **60 FPS**
+de mediana (mínimo 52), bucle de eventos del servidor a 12 ms (p99), 103 MB de memoria y unos **5 KB/s**
+de bajada por persona (sin contar el video).
 
 ### Fase 0 · Entorno
 

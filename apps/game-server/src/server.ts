@@ -1,6 +1,7 @@
 import { Server, matchMaker } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { GAME_MAX_MESSAGE_BYTES, WORLD_ROOM, type GameServerHealth } from '@pixels/shared';
+import { createLoadMonitor } from './load.js';
 import { WorldRoom, type WorldRoomDeps } from './rooms/WorldRoom.js';
 
 export interface GameServerOptions extends WorldRoomDeps {
@@ -8,6 +9,7 @@ export interface GameServerOptions extends WorldRoomDeps {
 }
 
 export function createGameServer({ corsOrigin, ...deps }: GameServerOptions) {
+  const load = createLoadMonitor();
   const server = new Server({
     // Los cambios de la pizarra no caben en los 4 KB por mensaje que deja Colyseus por defecto.
     transport: new WebSocketTransport({ maxPayload: GAME_MAX_MESSAGE_BYTES }),
@@ -19,6 +21,7 @@ export function createGameServer({ corsOrigin, ...deps }: GameServerOptions) {
           status: 'up',
           rooms: rooms.length,
           players: rooms.reduce((sum, room) => sum + room.clients, 0),
+          load: load.snapshot(),
         };
         res.set('Access-Control-Allow-Origin', corsOrigin).json(body);
       });

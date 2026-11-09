@@ -17,4 +17,9 @@ export interface GameServerHealth {
   status: ServiceStatus;
   rooms: number;
   players: number;
+  /** Carga del proceso: retraso del bucle de eventos (p99, últimos ~30 s) y memoria. */
+  load: {
+    eventLoopP99Ms: number;
+    rssMb: number;
+  };
 }

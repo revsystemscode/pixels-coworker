@@ -5,11 +5,15 @@ export const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3001';
 /** Mailpit (docker compose): ahí llegan los correos con los enlaces de login. */
 export const MAILPIT_URL = process.env.MAILPIT_URL ?? 'http://localhost:8025';
 
-/** WebGL por software y cámara/micrófono simulados (sin pedir permiso). */
+/**
+ * WebGL por software y cámara/micrófono simulados (sin pedir permiso). Con LOAD_TEST_GPU=1 se usa la
+ * GPU del equipo (para medir FPS de verdad en la prueba de carga).
+ */
 export const LAUNCH = {
   args: [
-    '--use-angle=swiftshader',
-    '--enable-unsafe-swiftshader',
+    ...(process.env.LOAD_TEST_GPU
+      ? ['--ignore-gpu-blocklist', '--enable-gpu']
+      : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']),
     '--use-fake-ui-for-media-stream',
     '--use-fake-device-for-media-stream',
   ],

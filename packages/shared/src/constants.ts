@@ -4,8 +4,8 @@ export const TILE_SIZE = 16;
 /** Nombre de la sala de Colyseus que representa un espacio. */
 export const WORLD_ROOM = 'world';
 
-/** Máximo de jugadores por sala en el MVP. */
-export const MAX_PLAYERS_PER_ROOM = 25;
+/** Máximo de jugadores por sala (un espacio = una sala). Probado con 100 bots: ver README. */
+export const MAX_PLAYERS_PER_ROOM = 100;
 
 /** Veces por segundo que el servidor envía el estado (rango objetivo: 10–20). */
 export const SERVER_TICK_RATE = 15;

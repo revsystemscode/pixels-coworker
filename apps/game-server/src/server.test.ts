@@ -116,7 +116,11 @@ async function health(): Promise<GameServerHealth> {
 
 describe('servidor de juego', () => {
   it('responde /health', async () => {
-    expect(await health()).toMatchObject({ service: 'game-server', status: 'up' });
+    expect(await health()).toMatchObject({
+      service: 'game-server',
+      status: 'up',
+      load: { eventLoopP99Ms: expect.any(Number), rssMb: expect.any(Number) },
+    });
   });
 
   it('dos clientes entran a la misma sala y se ven con nombre y avatar', async () => {

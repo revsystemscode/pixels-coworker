@@ -163,15 +163,15 @@ Registro breve de decisiones de producto y de arquitectura. Lo más reciente, ar
 
 ## Datos del equipo (Fase 0–1)
 
-| Tema                       | Decisión                                                                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------- |
-| Nombre                     | pixels-coworker                                                                          |
-| Usuarios por espacio (MVP) | Hasta 25 (`MAX_PLAYERS_PER_ROOM`). Se puede subir con `ROOM_MAX_CLIENTS` para pruebas.   |
-| Arte                       | Kenney (CC0): Roguelike base + Roguelike Indoor (mapa) y RPG Urban (personajes)          |
-| Movimiento                 | Por casillas de 16 px, 4 direcciones, 160 ms por casilla                                 |
-| API                        | Fastify                                                                                  |
-| MVP (fases 0–3) incluye    | Video por proximidad, compartir pantalla, zonas privadas, login con Google y **pizarra** |
-| Pendiente                  | Hosting y presupuesto (antes de la Fase 6), dominio, proveedor de correo                 |
+| Tema                    | Decisión                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| Nombre                  | pixels-coworker                                                                             |
+| Usuarios por espacio    | Hasta 100 (`MAX_PLAYERS_PER_ROOM`, desde la Fase 6; antes 25). Probado con el espacio lleno |
+| Arte                    | Kenney (CC0): Roguelike base + Roguelike Indoor (mapa) y RPG Urban (personajes)             |
+| Movimiento              | Por casillas de 16 px, 4 direcciones, 160 ms por casilla                                    |
+| API                     | Fastify                                                                                     |
+| MVP (fases 0–3) incluye | Video por proximidad, compartir pantalla, zonas privadas, login con Google y **pizarra**    |
+| Pendiente               | Hosting y presupuesto (antes de la Fase 6), dominio, proveedor de correo                    |
 
 La **pizarra colaborativa** estaba en la Fase 4 del plan original; el equipo la pidió en el MVP, así que
 se adelantó y se hizo justo después de la Fase 3 (ver «Pizarra»).

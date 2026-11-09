@@ -12,6 +12,7 @@ describe('toStatusRows', () => {
       status: 'up',
       rooms: 0,
       players: 0,
+      load: { eventLoopP99Ms: 1, rssMb: 100 },
     });
     expect(rows.find((r) => r.label === 'Servidor de juego')?.status).toBe('up');
     expect(
